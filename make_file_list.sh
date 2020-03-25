@@ -22,7 +22,6 @@ done
 
 find src -name "*.c" | sed -e 's/\s\+/\n/g' | sort > srcs.tmp
 find include -name "*.h" | grep -vFf c_headers.tmp | sed -e 's/\s\+/\n/g' | sort > c_cpp_headers.tmp
-find include -name "*.hpp" | sed -e 's/\s\+/\n/g' | sort > cpp_headers.tmp
 
 echo 'LIST (APPEND msgpackc_SOURCES' > Files.cmake
 cat srcs.tmp | sed -e 's/^/    /g' >> Files.cmake

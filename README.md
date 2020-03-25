@@ -61,66 +61,6 @@ int main(void)
 
 See [`QUICKSTART-C.md`](./QUICKSTART-C.md) for more details.
 
-In C++:
-
-```c++
-#include <msgpack.hpp>
-#include <string>
-#include <iostream>
-#include <sstream>
-
-int main()
-{
-    msgpack::type::tuple<int, bool, std::string> src(1, true, "example");
-
-    // serialize the object into the buffer.
-    // any classes that implements write(const char*,size_t) can be a buffer.
-    std::stringstream buffer;
-    msgpack::pack(buffer, src);
-
-    // send the buffer ...
-    buffer.seekg(0);
-
-    // deserialize the buffer into msgpack::object instance.
-    std::string str(buffer.str());
-
-    msgpack::object_handle oh =
-        msgpack::unpack(str.data(), str.size());
-
-    // deserialized object is valid during the msgpack::object_handle instance is alive.
-    msgpack::object deserialized = oh.get();
-
-    // msgpack::object supports ostream.
-    std::cout << deserialized << std::endl;
-
-    // convert msgpack::object instance into the original type.
-    // if the type is mismatched, it throws msgpack::type_error exception.
-    msgpack::type::tuple<int, bool, std::string> dst;
-    deserialized.convert(dst);
-
-    // or create the new instance
-    msgpack::type::tuple<int, bool, std::string> dst2 =
-        deserialized.as<msgpack::type::tuple<int, bool, std::string> >();
-
-    return 0;
-}
-```
-
-See [`QUICKSTART-CPP.md`](./QUICKSTART-CPP.md) for more details.
-
-Usage
------
-
-### C++ Header Only Library
-
-When you use msgpack on C++, you can just add
-msgpack-c/include to your include path:
-
-    g++ -I msgpack-c/include your_source_file.cpp
-
-If you want to use C version of msgpack, you need to build it. You can
-also install the C and C++ versions of msgpack.
-
 ### Building and Installing
 
 #### Install from git repository
@@ -132,23 +72,13 @@ You will need:
  - `gcc >= 4.1.0`
  - `cmake >= 2.8.0`
 
-C and C++03:
+C:
 
     $ git clone https://github.com/msgpack/msgpack-c.git
     $ cd msgpack-c
     $ cmake .
     $ make
     $ sudo make install
-
-If you want to setup C++11 or C++17 version of msgpack instead,
-execute the following commands:
-
-    $ git clone https://github.com/msgpack/msgpack-c.git
-    $ cd msgpack-c
-    $ cmake -DMSGPACK_CXX[11|17]=ON .
-    $ sudo make install
-
-`MSGPACK_CXX[11|17]` flags are not affected to installing files. Just switching test cases. All files are installed in every settings.
 
 When you use the C part of `msgpack-c`, you need to build and link the library. By default, both static/shared libraries are built. If you want to build only static library, set `BUILD_SHARED_LIBS=OFF` to cmake. If you want to build only shared library, set `BUILD_SHARED_LIBS=ON`.
 
@@ -177,22 +107,4 @@ the binaries:' text box.
 
 7. Build all.
 
-### Documentation
 
-You can get additional information including the tutorial on the
-[wiki](https://github.com/msgpack/msgpack-c/wiki).
-
-Contributing
-------------
-
-`msgpack-c` is developed on GitHub at [msgpack/msgpack-c](https://github.com/msgpack/msgpack-c).
-To report an issue or send a pull request, use the
-[issue tracker](https://github.com/msgpack/msgpack-c/issues).
-
-Here's the list of [great contributors](https://github.com/msgpack/msgpack-c/graphs/contributors).
-
-License
--------
-
-`msgpack-c` is licensed under the Boost Software License, Version 1.0. See
-the [`LICENSE_1_0.txt`](./LICENSE_1_0.txt) file for details.
