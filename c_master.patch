@@ -1,0 +1,1707 @@
+diff --git a/.github/workflows/coverage.yml b/.github/workflows/coverage.yml
+index a92575de..e3834c04 100644
+--- a/.github/workflows/coverage.yml
++++ b/.github/workflows/coverage.yml
+@@ -21,15 +21,6 @@ jobs:
+       run: |
+         sudo apt-get update
+         sudo apt-get install g++-multilib lcov
+-    - name: Cache boost
+-      id: cache-boost
+-      uses: actions/cache@v1
+-      with:
+-        path: usr
+-        key: ${{ runner.os }}-boost-20200107
+-    - name: Build boost
+-      if: steps.cache-boost.outputs.cache-hit != 'true'
+-      run: ./.github/depends/boost.sh -b both -t gcc
+     - name: Compile tests
+       run: |
+         # install gtest
+@@ -48,7 +39,7 @@ jobs:
+         cd ..
+ 
+         mkdir build && cd build
+-        CMAKE_LIBRARY_PATH="${BASE}/build" GTEST_ROOT="${BASE}/usr" CMAKE_PREFIX_PATH="${BASE}/usr/gcc/lib64/cmake" cmake -DMSGPACK_CXX17=ON -DMSGPACK_32BIT=OFF -DMSGPACK_BOOST=ON -DBUILD_SHARED_LIBS=ON -DMSGPACK_CHAR_SIGN=signed -DMSGPACK_USE_X3_PARSE=ON -DMSGPACK_ENABLE_CXX=ON -DMSGPACK_BUILD_EXAMPLES=ON -DMSGPACK_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DMSGPACK_GEN_COVERAGE=ON ..
++        CMAKE_LIBRARY_PATH="${BASE}/build" GTEST_ROOT="${BASE}/usr" CMAKE_PREFIX_PATH="${BASE}/usr/gcc/lib64/cmake" cmake -DMSGPACK_32BIT=OFF -DBUILD_SHARED_LIBS=ON -DMSGPACK_CHAR_SIGN=signed -DMSGPACK_BUILD_EXAMPLES=ON -DMSGPACK_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DMSGPACK_GEN_COVERAGE=ON ..
+         make -j4
+         make test
+     - name: Upload coverage to Codecov
+diff --git a/.github/workflows/gha.yml b/.github/workflows/gha.yml
+index 906fe353..cf798206 100644
+--- a/.github/workflows/gha.yml
++++ b/.github/workflows/gha.yml
+@@ -17,15 +17,6 @@ jobs:
+         pattern: [0, 1, 2, 3]
+     steps:
+     - uses: actions/checkout@v1
+-    - name: Cache boost
+-      id: cache-boost
+-      uses: actions/cache@v1
+-      with:
+-        path: usr
+-        key: ${{ runner.os }}-boost-20200107
+-    - name: Build boost
+-      if: steps.cache-boost.outputs.cache-hit != 'true'
+-      run: ./.github/depends/boost.sh -b 64 -t clang
+     - name: build and test
+       env:
+         CC: clang
+@@ -35,38 +26,23 @@ jobs:
+         BASE=`pwd`;
+ 
+         # matrix config
++        ACTION="ci/build_cmake.sh"
++        export ARCH="64"
+         if [ ${{ matrix.pattern }} == 0 ]; then
+-          ACTION="ci/build_cmake.sh"
+-          export CXX17="ON"
+-          export ARCH="64"
+-          export BOOST="ON"
+-          SHARED="ON"
++          export SHARED="ON"
+           export CHAR_SIGN="unsigned"
+-          export API_VERSION="1"
+         fi
+         if [ ${{ matrix.pattern }} == 1 ]; then
+-          ACTION="ci/build_cmake.sh"
+-          export CXX17="ON"
+-          export ARCH="64"
+-          export BOOST="ON"
+           export SHARED="ON"
+           export CHAR_SIGN="signed"
+-          export API_VERSION="3"
+         fi
+         if [ ${{ matrix.pattern }} == 2 ]; then
+-          ACTION="ci/build_cmake.sh"
+-          export CXX17="ON"
+-          export ARCH="64"
+-          export SHARED="ON"
++          export SHARED="OFF"
+           export CHAR_SIGN="signed"
+-          export API_VERSION="2"
+         fi
+         if [ ${{ matrix.pattern }} == 3 ]; then
+-          ACTION="ci/build_cmake.sh"
+-          export ARCH="64"
+-          export SHARED="ON"
++          export SHARED="OFF"
+           export CHAR_SIGN="unsigned"
+-          export API_VERSION="2"
+         fi
+ 
+         # install gtest
+@@ -85,13 +61,13 @@ jobs:
+ 
+         # build and test
+         CMAKE_CXX_COMPILER="${CXX}" CMAKE_C_COMPILER="${CC}" CMAKE_LIBRARY_PATH="${BASE}/usr/lib:${BASE}/build" GTEST_ROOT="${BASE}/usr" CMAKE_PREFIX_PATH="${BASE}/usr/clang/lib${ARCH}/cmake" CFLAGS="-Werror -g" CXXFLAGS="-Werror -g" ${ACTION}
+-        cat Files.cmake| grep ".*\.[h|hpp]" | perl -pe 's/ //g' | sort > tmp1  && find include -name "*.h" -o -name "*.hpp" | sort > tmp2 && diff tmp1 tmp2
++        cat Files.cmake| grep ".*\.h" | perl -pe 's/ //g' | sort > tmp1  && find include -name "*.h" | sort > tmp2 && diff tmp1 tmp2
+ 
+   linux:
+     runs-on: ubuntu-18.04
+     strategy:
+       matrix:
+-        pattern: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
++        pattern: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+     steps:
+     - uses: actions/checkout@v1
+     - name: install g++-multilib
+@@ -105,15 +81,6 @@ jobs:
+       run: |
+         sudo apt-get update
+         sudo apt-get install valgrind
+-    - name: Cache boost
+-      id: cache-boost
+-      uses: actions/cache@v1
+-      with:
+-        path: usr
+-        key: ${{ runner.os }}-boost-20200107
+-    - name: Build boost
+-      if: steps.cache-boost.outputs.cache-hit != 'true'
+-      run: ./.github/depends/boost.sh -b both -t gcc
+     - name: build and test
+       shell: bash
+       run: |
+@@ -125,10 +92,8 @@ jobs:
+           export CXX=clang++
+           ACTION="ci/build_cmake.sh"
+           export ARCH="64"
+-          export BOOST="ON"
+           export SHARED="ON"
+           export CHAR_SIGN="unsigned"
+-          export API_VERSION="2"
+         fi
+         if [ ${{ matrix.pattern }} == 1 ]; then
+           export CC=clang
+@@ -137,51 +102,38 @@ jobs:
+           export ARCH="32"
+           export SHARED="ON"
+           export CHAR_SIGN="signed"
+-          export API_VERSION="2"
+         fi
+         if [ ${{ matrix.pattern }} == 2 ]; then
+           export CC=clang
+           export CXX=clang++
+           ACTION="ci/build_cmake.sh"
+-          export CXX17="ON"
+           export ARCH="64"
+-          export BOOST="ON"
+           export SHARED="ON"
+           export CHAR_SIGN="signed"
+-          export API_VERSION="3"
+-          export X3_PARSE="ON"
+         fi
+         if [ ${{ matrix.pattern }} == 3 ]; then
+           export CC=clang
+           export CXX=clang++
+           ACTION="ci/build_cmake.sh"
+-          export CXX17="ON"
+           export ARCH="32"
+           export SHARED="OFF"
+           export CHAR_SIGN="unsigned"
+-          export API_VERSION="2"
+         fi
+         if [ ${{ matrix.pattern }} == 4 ]; then
+           export CC=gcc
+           export CXX=g++
+           ACTION="ci/build_cmake.sh"
+-          export CXX17="ON"
+           export ARCH="64"
+           export SHARED="ON"
+           export CHAR_SIGN="signed"
+-          export API_VERSION="2"
+         fi
+         if [ ${{ matrix.pattern }} == 5 ]; then
+           export CC=gcc
+           export CXX=g++
+           ACTION="ci/build_cmake.sh"
+-          export CXX17="ON"
+           export ARCH="32"
+-          export BOOST="ON"
+           export SHARED="ON"
+           export CHAR_SIGN="unsigned"
+-          export API_VERSION="3"
+-          export X3_PARSE="ON"
+         fi
+         if [ ${{ matrix.pattern }} == 6 ]; then
+           export CC=gcc
+@@ -190,47 +142,16 @@ jobs:
+           export ARCH="64"
+           export SHARED="ON"
+           export CHAR_SIGN="unsigned"
+-          export API_VERSION="2"
+         fi
+         if [ ${{ matrix.pattern }} == 7 ]; then
+           export CC=gcc
+           export CXX=g++
+           ACTION="ci/build_cmake.sh"
+           export ARCH="32"
+-          export BOOST="ON"
+           export SHARED="OFF"
+           export CHAR_SIGN="signed"
+-          export API_VERSION="1"
+         fi
+         if [ ${{ matrix.pattern }} == 8 ]; then
+-          export CC=gcc
+-          export CXX=g++
+-          ACTION="ci/build_cmake.sh"
+-          export ARCH="32"
+-          export BOOST="ON"
+-          export SHARED="OFF"
+-          export CHAR_SIGN="signed"
+-          export API_VERSION="2"
+-        fi
+-        if [ ${{ matrix.pattern }} == 9 ]; then
+-          export CC=clang
+-          export CXX=clang++
+-          ACTION="ci/build_regression.sh"
+-          export ARCH="64"
+-          export SAN="UBSAN"
+-          export MSGPACK_FUZZ_REGRESSION="ON"
+-          export CTEST_OUTPUT_ON_FAILURE=1
+-        fi
+-        if [ ${{ matrix.pattern }} == 10 ]; then
+-          export CC=clang
+-          export CXX=clang++
+-          ACTION="ci/build_regression.sh"
+-          export ARCH="64"
+-          export SAN="ASAN"
+-          export MSGPACK_FUZZ_REGRESSION="ON"
+-          export CTEST_OUTPUT_ON_FAILURE=1
+-        fi
+-        if [ ${{ matrix.pattern }} == 11 ]; then
+           export CC=gcc
+           export CXX=g++
+           ACTION="ci/build_cmake_embedded.sh"
+@@ -258,12 +179,12 @@ jobs:
+ 
+         # build and test
+         CMAKE_CXX_COMPILER="${CXX}" CMAKE_C_COMPILER="${CC}" CMAKE_LIBRARY_PATH="${BASE}/usr/lib:${BASE}/build" GTEST_ROOT="${BASE}/usr" CMAKE_PREFIX_PATH="${BASE}/usr/gcc/lib${ARCH}/cmake" CFLAGS="-Werror -g" CXXFLAGS="-Werror -g" MSGPACK_SAN="${SAN}" ${ACTION}
+-        cat Files.cmake| grep ".*\.[h|hpp]" | perl -pe 's/ //g' | sort > tmp1  && find include -name "*.h" -o -name "*.hpp" | sort > tmp2 && diff tmp1 tmp2
++        cat Files.cmake| grep ".*\.h" | perl -pe 's/ //g' | sort > tmp1  && find include -name "*.h" | sort > tmp2 && diff tmp1 tmp2
+   windows:
+     runs-on: windows-2016
+     strategy:
+       matrix:
+-        pattern: [0, 1, 2, 3]
++        pattern: [0, 1]
+     steps:
+     - uses: actions/checkout@v1
+     - name: Cache vcpkg
+@@ -282,26 +203,15 @@ jobs:
+       shell: powershell
+       run: |
+         if (${{ matrix.pattern }} -eq 0) {
+-          $CPP11="-DMSGPACK_CXX11=OFF"
+-          $BOOST="-DMSGPACK_BOOST=OFF"
+-        }
+-        if (${{ matrix.pattern }} -eq 1) {
+-          $CPP11="-DMSGPACK_CXX11=OFF"
+-          $BOOST="-DMSGPACK_BOOST=ON"
+-        }
+-        if (${{ matrix.pattern }} -eq 2) {
+-          $CPP11="-DMSGPACK_CXX11=ON"
+-          $BOOST="-DMSGPACK_BOOST=OFF"
+-        }
+-        if (${{ matrix.pattern }} -eq 3) {
+-          $CPP11="-DMSGPACK_CXX11=ON"
+-          $BOOST="-DMSGPACK_BOOST=ON"
++          ARCH="x64"
++        } else {
++          ARCH="Win32"
+         }
+ 
+         $CUR=(Get-Location).Path
+         md build
+         cd build
+-        cmake -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" $CPP11 $BOOST "-DCMAKE_CXX_FLAGS=/D_VARIADIC_MAX=10 /EHsc /D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING" ..
++        cmake -A $ARCH -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DCMAKE_CXX_FLAGS=/D_VARIADIC_MAX=10 /EHsc /D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING" ..
+         cmake --build . --config Release
+         $pathbak="$env:PATH"
+         $env:PATH="C:\vcpkg\installed\x64-windows\bin;$CUR\build\Release;$pathbak"
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f9762d1d..ea02d73d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -23,9 +23,17 @@ SET (libdir "\${exec_prefix}/lib")
+ SET (includedir "\${prefix}/include")
+ SET (GNUCXX_STD_SUPPORT_VERSION "4.3")
+ 
+-OPTION (MSGPACK_CXX11 "Using c++11 compiler" OFF)
+ OPTION (MSGPACK_32BIT "32bit compile" OFF)
+-OPTION (MSGPACK_BOOST "Using boost libraries" OFF)
++
++INCLUDE(TestBigEndian)
++TEST_BIG_ENDIAN(BIGENDIAN)
++IF (BIGENDIAN)
++	SET(MSGPACK_ENDIAN_BIG_BYTE 1)
++	ADD_DEFINITIONS(-DMSGPACK_ENDIAN_BIG_BYTE)
++ELSE ()
++	SET(MSGPACK_ENDIAN_LITTLE_BYTE 1)
++	ADD_DEFINITIONS(-DMSGPACK_ENDIAN_LITTLE_BYTE)
++ENDIF ()
+ 
+ IF (APPLE)
+     SET(CMAKE_MACOSX_RPATH ON)
+@@ -39,52 +47,6 @@ IF (APPLE)
+     ENDIF ()
+ ENDIF ()
+ 
+-IF (MSGPACK_USE_X3_PARSE)
+-   IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+-      SET (CMAKE_CXX_FLAGS "-DMSGPACK_USE_X3_PARSE -std=c++14 ${CMAKE_CXX_FLAGS}")
+-   ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+-      SET (CMAKE_CXX_FLAGS "-DMSGPACK_USE_X3_PARSE -std=c++14 ${CMAKE_CXX_FLAGS}")
+-   ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+-      SET (CMAKE_CXX_FLAGS "-DMSGPACK_USE_X3_PARSE ${CMAKE_CXX_FLAGS}")
+-      IF (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19)
+-          MESSAGE ( FATAL_ERROR "MSVC doesn't support C++14.")
+-      ENDIF ()
+-   ENDIF ()
+-ELSE ()
+-   IF (MSGPACK_CXX17)
+-      IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+-         SET (CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS}")
+-      ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+-         SET (CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS}")
+-      ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+-         MESSAGE ( FATAL_ERROR "MSVC doesn't support C++17.")
+-      ENDIF ()
+-   ELSEIF (MSGPACK_CXX11)
+-      IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+-         SET (CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
+-      ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+-         SET (CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
+-      ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+-         IF (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19)
+-             MESSAGE ( FATAL_ERROR "MSVC doesn't support C++11.")
+-         ENDIF ()
+-      ENDIF ()
+-   ELSE ()
+-      IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+-         IF ((CMAKE_CXX_COMPILER_VERSION VERSION_GREATER ${GNUCXX_STD_SUPPORT_VERSION}) OR
+-             (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL   ${GNUCXX_STD_SUPPORT_VERSION}))
+-             SET (CMAKE_CXX_FLAGS "-std=c++98 ${CMAKE_CXX_FLAGS}")
+-         ENDIF ()
+-      ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+-         SET (CMAKE_CXX_FLAGS "-std=c++98 ${CMAKE_CXX_FLAGS}")
+-      ELSEIF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+-         IF (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 18)
+-             SET (CMAKE_CXX_FLAGS "-DMSGPACK_USE_CPP03 ${CMAKE_CXX_FLAGS}")
+-         ENDIF ()
+-      ENDIF ()
+-   ENDIF ()
+-ENDIF ()
+-
+ IF (MSGPACK_32BIT)
+    IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+       SET (CMAKE_CXX_FLAGS "-m32 ${CMAKE_CXX_FLAGS}")
+@@ -99,123 +61,49 @@ ENDIF ()
+ 
+ OPTION (MSGPACK_BUILD_EXAMPLES "Build msgpack examples." ON)
+ 
+-IF (MSGPACK_BOOST)
+-   SET (CMAKE_CXX_FLAGS "-DMSGPACK_USE_BOOST ${CMAKE_CXX_FLAGS}")
+-   SET (Boost_USE_MULTITHREADED      ON)
+-   SET (Boost_USE_STATIC_RUNTIME    OFF)
+-   FIND_PACKAGE (Boost REQUIRED COMPONENTS chrono context system timer)
+-   INCLUDE_DIRECTORIES (
+-      ${Boost_INCLUDE_DIRS}
+-   )
+-   LINK_DIRECTORIES (
+-      ${Boost_LIBRARY_DIRS}
+-   )
+-   IF (MSGPACK_BOOST_DIR)
+-      INCLUDE_DIRECTORIES (
+-         ${MSGPACK_BOOST_DIR}
+-      )
+-   ENDIF ()
+-ENDIF ()
+-
+ IF (MSGPACK_CHAR_SIGN)
+    SET (CMAKE_C_FLAGS "-f${MSGPACK_CHAR_SIGN}-char ${CMAKE_C_FLAGS}")
+    SET (CMAKE_CXX_FLAGS "-f${MSGPACK_CHAR_SIGN}-char ${CMAKE_CXX_FLAGS}")
+ ENDIF ()
+ 
+-IF (MSGPACK_DEFAULT_API_VERSION)
+-   SET (CMAKE_CXX_FLAGS "-DMSGPACK_DEFAULT_API_VERSION=${MSGPACK_DEFAULT_API_VERSION} ${CMAKE_CXX_FLAGS}")
+-ELSE ()
+-   SET (CMAKE_CXX_FLAGS "-DMSGPACK_DEFAULT_API_VERSION=3 ${CMAKE_CXX_FLAGS}")
+-ENDIF ()
+-
+-FILE (GLOB_RECURSE PREDEF_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/external/boost/predef/include/boost ${CMAKE_CURRENT_SOURCE_DIR}/external/boost/predef/include/boost/*.h)
+-FOREACH (F ${PREDEF_FILES})
+-   SET(M "Converting ${F}")
+-   MESSAGE(STATUS ${M})
+-   FILE (READ ${CMAKE_CURRENT_SOURCE_DIR}/external/boost/predef/include/boost/${F} CONTENT)
+-   STRING(REPLACE "BOOST_" "MSGPACK_" CONTENT ${CONTENT})
+-   STRING(REPLACE "boost/" "msgpack/" CONTENT ${CONTENT})
+-   FILE (GENERATE OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/msgpack/${F} CONTENT ${CONTENT})
+-ENDFOREACH ()
+-
+-FILE (GLOB_RECURSE PREPROCESSOR_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/external/boost/preprocessor/include/boost ${CMAKE_CURRENT_SOURCE_DIR}/external/boost/preprocessor/include/boost/*.hpp)
+-FOREACH (F ${PREPROCESSOR_FILES})
+-   SET(M "Converting ${F}")
+-   MESSAGE(STATUS ${M})
+-   FILE (READ ${CMAKE_CURRENT_SOURCE_DIR}/external/boost/preprocessor/include/boost/${F} CONTENT)
+-   STRING(REPLACE "BOOST_" "MSGPACK_" CONTENT ${CONTENT})
+-   STRING(REPLACE "boost/" "msgpack/" CONTENT ${CONTENT})
+-   FILE (GENERATE OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/msgpack/${F} CONTENT ${CONTENT})
+-ENDFOREACH ()
+-
+ FIND_PACKAGE (GTest)
+ FIND_PACKAGE (ZLIB)
+ FIND_PACKAGE (Threads)
+-IF (GTEST_FOUND AND ZLIB_FOUND AND THREADS_FOUND AND NOT "${MSGPACK_FUZZ_REGRESSION}" STREQUAL "ON")
++IF (GTEST_FOUND AND ZLIB_FOUND AND THREADS_FOUND)
+     OPTION (MSGPACK_BUILD_TESTS "Build msgpack tests." ON)
+     OPTION (MSGPACK_GEN_COVERAGE "Enable running gcov to get a test coverage report." OFF)
+ ENDIF ()
+ 
+-OPTION (MSGPACK_ENABLE_CXX "Enable C++ interface." ON)
+-
+-OPTION (MSGPACK_CXX_ONLY "Build only C++ libraries (header-only)." OFF)
+-IF (MSGPACK_CXX_ONLY)
+-    IF (DEFINED MSGPACK_ENABLE_SHARED AND MSGPACK_ENABLE_SHARED)
+-        MESSAGE(WARNING "MSGPACK_ENABLE_SHARED is overridden to OFF by MSGPACK_CXX_ONLY")
+-    ENDIF ()
+-    SET (MSGPACK_ENABLE_SHARED OFF)
+-    IF (DEFINED MSGPACK_ENABLE_STATIC AND MSGPACK_ENABLE_STATIC)
+-        MESSAGE(WARNING "MSGPACK_ENABLE_STATIC is overridden to OFF by MSGPACK_CXX_ONLY")
+-    ENDIF ()
+-    SET (MSGPACK_ENABLE_STATIC OFF)
+-    IF (DEFINED MSGPACK_ENABLE_CXX AND NOT MSGPACK_ENABLE_CXX)
+-        MESSAGE(WARNING "MSGPACK_ENABLE_CXX is overridden to ON by MSGPACK_CXX_ONLY")
+-    ENDIF ()
+-    SET (MSGPACK_ENABLE_CXX ON)
+-ELSE ()
+-    IF (DEFINED BUILD_SHARED_LIBS)
+-        IF (BUILD_SHARED_LIBS)
+-            IF (DEFINED MSGPACK_ENABLE_SHARED AND NOT MSGPACK_ENABLE_SHARED)
+-                MESSAGE(WARNING "MSGPACK_ENABLE_SHARED is overridden to ON by BUILD_SHARED_LIBS")
+-            ENDIF ()
+-            SET (MSGPACK_ENABLE_SHARED ON)
+-            IF (DEFINED MSGPACK_ENABLE_STATIC AND MSGPACK_ENABLE_STATIC)
+-                MESSAGE(WARNING "MSGPACK_ENABLE_STATIC is overridden to OFF by BUILD_SHARED_LIBS")
+-            ENDIF ()
+-            SET (MSGPACK_ENABLE_STATIC OFF)
+-        ELSE ()
+-            IF (DEFINED MSGPACK_ENABLE_SHARED AND MSGPACK_ENABLE_SHARED)
+-                MESSAGE(WARNING "MSGPACK_ENABLE_SHARED is overridden to OFF by BUILD_SHARED_LIBS")
+-            ENDIF ()
+-            SET (MSGPACK_ENABLE_SHARED OFF)
+-            IF (DEFINED MSGPACK_ENABLE_STATIC AND NOT MSGPACK_ENABLE_STATIC)
+-                MESSAGE(WARNING "MSGPACK_ENABLE_STATIC is overridden to ON by BUILD_SHARED_LIBS")
+-            ENDIF ()
+-            SET (MSGPACK_ENABLE_STATIC ON)
++IF (DEFINED BUILD_SHARED_LIBS)
++    IF (BUILD_SHARED_LIBS)
++        IF (DEFINED MSGPACK_ENABLE_SHARED AND NOT MSGPACK_ENABLE_SHARED)
++            MESSAGE(WARNING "MSGPACK_ENABLE_SHARED is overridden to ON by BUILD_SHARED_LIBS")
++        ENDIF ()
++        SET (MSGPACK_ENABLE_SHARED ON)
++        IF (DEFINED MSGPACK_ENABLE_STATIC AND MSGPACK_ENABLE_STATIC)
++            MESSAGE(WARNING "MSGPACK_ENABLE_STATIC is overridden to OFF by BUILD_SHARED_LIBS")
+         ENDIF ()
++        SET (MSGPACK_ENABLE_STATIC OFF)
+     ELSE ()
+-        IF (NOT DEFINED MSGPACK_ENABLE_SHARED)
+-            SET (MSGPACK_ENABLE_SHARED ON)
++        IF (DEFINED MSGPACK_ENABLE_SHARED AND MSGPACK_ENABLE_SHARED)
++            MESSAGE(WARNING "MSGPACK_ENABLE_SHARED is overridden to OFF by BUILD_SHARED_LIBS")
+         ENDIF ()
+-        IF (NOT DEFINED MSGPACK_ENABLE_STATIC)
+-            SET (MSGPACK_ENABLE_STATIC ON)
++        SET (MSGPACK_ENABLE_SHARED OFF)
++        IF (DEFINED MSGPACK_ENABLE_STATIC AND NOT MSGPACK_ENABLE_STATIC)
++            MESSAGE(WARNING "MSGPACK_ENABLE_STATIC is overridden to ON by BUILD_SHARED_LIBS")
+         ENDIF ()
+-        SET (BUILD_SHARED_LIBS ${MSGPACK_ENABLE_SHARED})
++        SET (MSGPACK_ENABLE_STATIC ON)
++    ENDIF ()
++ELSE ()
++    IF (NOT DEFINED MSGPACK_ENABLE_SHARED)
++        SET (MSGPACK_ENABLE_SHARED ON)
++    ENDIF ()
++    IF (NOT DEFINED MSGPACK_ENABLE_STATIC)
++        SET (MSGPACK_ENABLE_STATIC ON)
+     ENDIF ()
++    SET (BUILD_SHARED_LIBS ${MSGPACK_ENABLE_SHARED})
+ ENDIF ()
+ 
+-INCLUDE (CheckCXXSourceCompiles)
+-CHECK_CXX_SOURCE_COMPILES ("
+-#include <bits/atomicity.h>
+-int atomic_sub(int i) { return __gnu_cxx::__exchange_and_add(&i, -1) - 1; }
+-int atomic_add(int i) { return __gnu_cxx::__exchange_and_add(&i, 1) + 1; }
+-int main(int argc, char * argv[])
+-{
+-    atomic_sub(1);
+-    atomic_add(1);
+-}
+-" MSGPACK_ENABLE_GCC_CXX_ATOMIC)
+-
+ INCLUDE (Files.cmake)
+ 
+ EXECUTE_PROCESS (
+@@ -247,16 +135,6 @@ IF (MSGPACK_ENABLE_SHARED OR MSGPACK_ENABLE_STATIC)
+     )
+ ENDIF ()
+ 
+-IF (MSGPACK_ENABLE_CXX AND ((CMAKE_VERSION VERSION_GREATER 3.0) OR (CMAKE_VERSION VERSION_EQUAL 3.0)))
+-    ADD_LIBRARY (msgpackc-cxx INTERFACE)
+-
+-    TARGET_INCLUDE_DIRECTORIES (msgpackc-cxx
+-        INTERFACE
+-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+-            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+-            $<INSTALL_INTERFACE:include>
+-    )
+-ENDIF ()
+ 
+ IF (MSGPACK_ENABLE_SHARED AND MSGPACK_ENABLE_STATIC)
+     ADD_LIBRARY (msgpackc-static STATIC
+@@ -284,17 +162,6 @@ IF (MSGPACK_ENABLE_SHARED AND MSGPACK_ENABLE_STATIC)
+     ENDIF ()
+ ENDIF ()
+ 
+-# enable regression testing
+-IF ("${MSGPACK_FUZZ_REGRESSION}" STREQUAL "ON" AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+-   SET (CMAKE_CXX_FLAGS "-DMSGPACK_USE_BOOST ${CMAKE_CXX_FLAGS}")
+-   SET (Boost_USE_MULTITHREADED      ON)
+-   SET (Boost_USE_STATIC_RUNTIME    OFF)
+-
+-   enable_testing ()
+-   ADD_SUBDIRECTORY (fuzz)
+-   SET (MSGPACK_BUILD_EXAMPLES OFF)
+-ENDIF ()
+-
+ IF (MSGPACK_GEN_COVERAGE)
+     IF (NOT MSGPACK_BUILD_TESTS)
+         MESSAGE(FATAL_ERROR "Coverage requires -DMSGPACK_BUILD_TESTS=ON")
+@@ -379,10 +246,6 @@ IF (MSGPACK_ENABLE_SHARED OR MSGPACK_ENABLE_STATIC)
+     SET (MSGPACK_INSTALLTARGETS msgpackc)
+ ENDIF ()
+ 
+-IF (MSGPACK_ENABLE_CXX AND ((CMAKE_VERSION VERSION_GREATER 3.0) OR (CMAKE_VERSION VERSION_EQUAL 3.0)))
+-    LIST (APPEND MSGPACK_INSTALLTARGETS msgpackc-cxx)
+-ENDIF ()
+-
+ IF (MSGPACK_ENABLE_SHARED AND MSGPACK_ENABLE_STATIC)
+     LIST (APPEND MSGPACK_INSTALLTARGETS msgpackc-static)
+ ENDIF ()
+@@ -396,7 +259,7 @@ FOREACH (file ${msgpackc_HEADERS})
+     GET_FILENAME_COMPONENT (dir ${file} PATH)
+     INSTALL (FILES ${file} DESTINATION ${CMAKE_INSTALL_PREFIX}/${dir})
+ ENDFOREACH ()
+-IF (NOT MSGPACK_CXX_ONLY AND NOT MSVC)
++IF (NOT MSVC)
+     INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/msgpack.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+ ENDIF ()
+ 
+@@ -418,35 +281,11 @@ IF (DOXYGEN_FOUND)
+         )
+     ENDIF ()
+     ADD_CUSTOM_TARGET (
+-        doxygen_c
++        doxygen
+         ${Doxyfile_c_CONTENT}
+         COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_c
+         VERBATIM
+     )
+-    LIST (APPEND Doxyfile_cpp_CONTENT
+-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_cpp
+-        COMMAND ${CMAKE_COMMAND} -E echo "FILE_PATTERNS      = *.hpp" >> ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_cpp
+-        COMMAND ${CMAKE_COMMAND} -E echo "OUTPUT_DIRECTORY   = doc_cpp" >> ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_cpp
+-        COMMAND ${CMAKE_COMMAND} -E echo "INPUT              = ${CMAKE_CURRENT_SOURCE_DIR}/include" >> ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_cpp
+-        COMMAND ${CMAKE_COMMAND} -E echo "EXTRACT_ALL        = YES" >> ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_cpp
+-        COMMAND ${CMAKE_COMMAND} -E echo "STRIP_FROM_PATH    = ${CMAKE_CURRENT_SOURCE_DIR}/include" >> ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_cpp
+-    )
+-    IF (DOXYGEN_DOT_FOUND)
+-        LIST (APPEND Doxyfile_cpp_CONTENT
+-            COMMAND ${CMAKE_COMMAND} -E echo "HAVE_DOT       = YES" >> ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_cpp
+-        )
+-    ENDIF ()
+-    ADD_CUSTOM_TARGET (
+-        doxygen_cpp
+-        ${Doxyfile_cpp_CONTENT}
+-        COMMAND ${CMAKE_COMMAND} -E echo "PROJECT_NAME       = \"MessagePack for C++\"" >> ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_cpp
+-        COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_cpp
+-        VERBATIM
+-    )
+-    ADD_CUSTOM_TARGET (
+-        doxygen
+-        DEPENDS doxygen_c doxygen_cpp
+-    )
+ ENDIF ()
+ 
+ INCLUDE (CMakePackageConfigHelpers)
+@@ -470,19 +309,17 @@ CONFIGURE_PACKAGE_CONFIG_FILE (msgpack-config.cmake.in
+     INSTALL_DESTINATION "${CMAKE_INSTALL_CMAKEDIR}"
+ )
+ 
+-IF (NOT MSGPACK_CXX_ONLY)
+-    INSTALL (EXPORT msgpack-targets
+-        FILE
+-            msgpack-targets.cmake
+-        DESTINATION
+-            "${CMAKE_INSTALL_CMAKEDIR}"
+-    )
++INSTALL (EXPORT msgpack-targets
++    FILE
++        msgpack-targets.cmake
++    DESTINATION
++        "${CMAKE_INSTALL_CMAKEDIR}"
++)
+ 
+-    INSTALL (
+-        FILES
+-            "${CMAKE_CURRENT_BINARY_DIR}/msgpack-config.cmake"
+-            "${CMAKE_CURRENT_BINARY_DIR}/msgpack-config-version.cmake"
+-        DESTINATION
+-            "${CMAKE_INSTALL_CMAKEDIR}"
+-    )
+-ENDIF ()
++INSTALL (
++    FILES
++        "${CMAKE_CURRENT_BINARY_DIR}/msgpack-config.cmake"
++        "${CMAKE_CURRENT_BINARY_DIR}/msgpack-config-version.cmake"
++    DESTINATION
++        "${CMAKE_INSTALL_CMAKEDIR}"
++)
+diff --git a/Files.cmake b/Files.cmake
+index 57622049..b2450896 100644
+--- a/Files.cmake
++++ b/Files.cmake
+@@ -1,3 +1,4 @@
++# Source files for C library
+ LIST (APPEND msgpackc_SOURCES
+     src/objectc.c
+     src/unpack.c
+@@ -6,757 +7,26 @@ LIST (APPEND msgpackc_SOURCES
+     src/zone.c
+ )
+ 
+-# For both C and C++ libraries
++# Header files for C library
+ LIST (APPEND msgpackc_HEADERS
++    include/msgpack.h
+     include/msgpack/fbuffer.h
++    include/msgpack/gcc_atomic.h
+     include/msgpack/object.h
+-    include/msgpack/predef.h
+-    include/msgpack/predef/architecture.h
+-    include/msgpack/predef/architecture/alpha.h
+-    include/msgpack/predef/architecture/arm.h
+-    include/msgpack/predef/architecture/blackfin.h
+-    include/msgpack/predef/architecture/convex.h
+-    include/msgpack/predef/architecture/ia64.h
+-    include/msgpack/predef/architecture/m68k.h
+-    include/msgpack/predef/architecture/mips.h
+-    include/msgpack/predef/architecture/parisc.h
+-    include/msgpack/predef/architecture/ppc.h
+-    include/msgpack/predef/architecture/ptx.h
+-    include/msgpack/predef/architecture/pyramid.h
+-    include/msgpack/predef/architecture/rs6k.h
+-    include/msgpack/predef/architecture/sparc.h
+-    include/msgpack/predef/architecture/superh.h
+-    include/msgpack/predef/architecture/sys370.h
+-    include/msgpack/predef/architecture/sys390.h
+-    include/msgpack/predef/architecture/x86.h
+-    include/msgpack/predef/architecture/x86/32.h
+-    include/msgpack/predef/architecture/x86/64.h
+-    include/msgpack/predef/architecture/z.h
+-    include/msgpack/predef/compiler.h
+-    include/msgpack/predef/compiler/borland.h
+-    include/msgpack/predef/compiler/clang.h
+-    include/msgpack/predef/compiler/comeau.h
+-    include/msgpack/predef/compiler/compaq.h
+-    include/msgpack/predef/compiler/diab.h
+-    include/msgpack/predef/compiler/digitalmars.h
+-    include/msgpack/predef/compiler/dignus.h
+-    include/msgpack/predef/compiler/edg.h
+-    include/msgpack/predef/compiler/ekopath.h
+-    include/msgpack/predef/compiler/gcc.h
+-    include/msgpack/predef/compiler/gcc_xml.h
+-    include/msgpack/predef/compiler/greenhills.h
+-    include/msgpack/predef/compiler/hp_acc.h
+-    include/msgpack/predef/compiler/iar.h
+-    include/msgpack/predef/compiler/ibm.h
+-    include/msgpack/predef/compiler/intel.h
+-    include/msgpack/predef/compiler/kai.h
+-    include/msgpack/predef/compiler/llvm.h
+-    include/msgpack/predef/compiler/metaware.h
+-    include/msgpack/predef/compiler/metrowerks.h
+-    include/msgpack/predef/compiler/microtec.h
+-    include/msgpack/predef/compiler/mpw.h
+-    include/msgpack/predef/compiler/nvcc.h
+-    include/msgpack/predef/compiler/palm.h
+-    include/msgpack/predef/compiler/pgi.h
+-    include/msgpack/predef/compiler/sgi_mipspro.h
+-    include/msgpack/predef/compiler/sunpro.h
+-    include/msgpack/predef/compiler/tendra.h
+-    include/msgpack/predef/compiler/visualc.h
+-    include/msgpack/predef/compiler/watcom.h
+-    include/msgpack/predef/detail/_cassert.h
+-    include/msgpack/predef/detail/_exception.h
+-    include/msgpack/predef/detail/comp_detected.h
+-    include/msgpack/predef/detail/endian_compat.h
+-    include/msgpack/predef/detail/os_detected.h
+-    include/msgpack/predef/detail/platform_detected.h
+-    include/msgpack/predef/detail/test.h
+-    include/msgpack/predef/detail/test_def.h
+-    include/msgpack/predef/hardware.h
+-    include/msgpack/predef/hardware/simd.h
+-    include/msgpack/predef/hardware/simd/arm.h
+-    include/msgpack/predef/hardware/simd/arm/versions.h
+-    include/msgpack/predef/hardware/simd/ppc.h
+-    include/msgpack/predef/hardware/simd/ppc/versions.h
+-    include/msgpack/predef/hardware/simd/x86.h
+-    include/msgpack/predef/hardware/simd/x86/versions.h
+-    include/msgpack/predef/hardware/simd/x86_amd.h
+-    include/msgpack/predef/hardware/simd/x86_amd/versions.h
+-    include/msgpack/predef/language.h
+-    include/msgpack/predef/language/cuda.h
+-    include/msgpack/predef/language/objc.h
+-    include/msgpack/predef/language/stdc.h
+-    include/msgpack/predef/language/stdcpp.h
+-    include/msgpack/predef/library.h
+-    include/msgpack/predef/library/c.h
+-    include/msgpack/predef/library/c/_prefix.h
+-    include/msgpack/predef/library/c/cloudabi.h
+-    include/msgpack/predef/library/c/gnu.h
+-    include/msgpack/predef/library/c/uc.h
+-    include/msgpack/predef/library/c/vms.h
+-    include/msgpack/predef/library/c/zos.h
+-    include/msgpack/predef/library/std.h
+-    include/msgpack/predef/library/std/_prefix.h
+-    include/msgpack/predef/library/std/cxx.h
+-    include/msgpack/predef/library/std/dinkumware.h
+-    include/msgpack/predef/library/std/libcomo.h
+-    include/msgpack/predef/library/std/modena.h
+-    include/msgpack/predef/library/std/msl.h
+-    include/msgpack/predef/library/std/roguewave.h
+-    include/msgpack/predef/library/std/sgi.h
+-    include/msgpack/predef/library/std/stdcpp3.h
+-    include/msgpack/predef/library/std/stlport.h
+-    include/msgpack/predef/library/std/vacpp.h
+-    include/msgpack/predef/make.h
+-    include/msgpack/predef/os.h
+-    include/msgpack/predef/os/aix.h
+-    include/msgpack/predef/os/amigaos.h
+-    include/msgpack/predef/os/android.h
+-    include/msgpack/predef/os/beos.h
+-    include/msgpack/predef/os/bsd.h
+-    include/msgpack/predef/os/bsd/bsdi.h
+-    include/msgpack/predef/os/bsd/dragonfly.h
+-    include/msgpack/predef/os/bsd/free.h
+-    include/msgpack/predef/os/bsd/net.h
+-    include/msgpack/predef/os/bsd/open.h
+-    include/msgpack/predef/os/cygwin.h
+-    include/msgpack/predef/os/haiku.h
+-    include/msgpack/predef/os/hpux.h
+-    include/msgpack/predef/os/ios.h
+-    include/msgpack/predef/os/irix.h
+-    include/msgpack/predef/os/linux.h
+-    include/msgpack/predef/os/macos.h
+-    include/msgpack/predef/os/os400.h
+-    include/msgpack/predef/os/qnxnto.h
+-    include/msgpack/predef/os/solaris.h
+-    include/msgpack/predef/os/unix.h
+-    include/msgpack/predef/os/vms.h
+-    include/msgpack/predef/os/windows.h
+-    include/msgpack/predef/other.h
+-    include/msgpack/predef/other/endian.h
+-    include/msgpack/predef/other/workaround.h
+-    include/msgpack/predef/platform.h
+-    include/msgpack/predef/platform/cloudabi.h
+-    include/msgpack/predef/platform/ios.h
+-    include/msgpack/predef/platform/mingw.h
+-    include/msgpack/predef/platform/mingw32.h
+-    include/msgpack/predef/platform/mingw64.h
+-    include/msgpack/predef/platform/windows_desktop.h
+-    include/msgpack/predef/platform/windows_phone.h
+-    include/msgpack/predef/platform/windows_runtime.h
+-    include/msgpack/predef/platform/windows_server.h
+-    include/msgpack/predef/platform/windows_store.h
+-    include/msgpack/predef/platform/windows_system.h
+-    include/msgpack/predef/platform/windows_uwp.h
+-    include/msgpack/predef/version.h
+-    include/msgpack/predef/version_number.h
++    include/msgpack/pack.h
++    include/msgpack/pack_define.h
++    include/msgpack/pack_template.h
++    include/msgpack/sbuffer.h
+     include/msgpack/sysdep.h
++    include/msgpack/timestamp.h
++    include/msgpack/unpack.h
+     include/msgpack/unpack_define.h
++    include/msgpack/unpack_template.h
++    include/msgpack/util.h
++    include/msgpack/version.h
+     include/msgpack/version_master.h
++    include/msgpack/vrefbuffer.h
+     include/msgpack/zbuffer.h
+     include/msgpack/zone.h
+ )
+ 
+-IF (NOT MSGPACK_CXX_ONLY)
+-    # Only for C library
+-    LIST (APPEND msgpackc_HEADERS
+-        include/msgpack.h
+-        include/msgpack/gcc_atomic.h
+-        include/msgpack/pack.h
+-        include/msgpack/pack_define.h
+-        include/msgpack/pack_template.h
+-        include/msgpack/sbuffer.h
+-        include/msgpack/timestamp.h
+-        include/msgpack/unpack.h
+-        include/msgpack/unpack_template.h
+-        include/msgpack/util.h
+-        include/msgpack/version.h
+-        include/msgpack/vrefbuffer.h
+-    )
+-ENDIF ()
+-
+-IF (MSGPACK_ENABLE_CXX)
+-    # Only for C++ library
+-    LIST (APPEND msgpackc_HEADERS
+-        include/msgpack.hpp
+-        include/msgpack/adaptor/adaptor_base.hpp
+-        include/msgpack/adaptor/adaptor_base_decl.hpp
+-        include/msgpack/adaptor/array_ref.hpp
+-        include/msgpack/adaptor/array_ref_decl.hpp
+-        include/msgpack/adaptor/bool.hpp
+-        include/msgpack/adaptor/boost/fusion.hpp
+-        include/msgpack/adaptor/boost/msgpack_variant.hpp
+-        include/msgpack/adaptor/boost/msgpack_variant_decl.hpp
+-        include/msgpack/adaptor/boost/optional.hpp
+-        include/msgpack/adaptor/boost/string_ref.hpp
+-        include/msgpack/adaptor/boost/string_view.hpp
+-        include/msgpack/adaptor/carray.hpp
+-        include/msgpack/adaptor/char_ptr.hpp
+-        include/msgpack/adaptor/check_container_size.hpp
+-        include/msgpack/adaptor/check_container_size_decl.hpp
+-        include/msgpack/adaptor/cpp11/array.hpp
+-        include/msgpack/adaptor/cpp11/array_char.hpp
+-        include/msgpack/adaptor/cpp11/array_unsigned_char.hpp
+-        include/msgpack/adaptor/cpp11/chrono.hpp
+-        include/msgpack/adaptor/cpp11/forward_list.hpp
+-        include/msgpack/adaptor/cpp11/reference_wrapper.hpp
+-        include/msgpack/adaptor/cpp11/shared_ptr.hpp
+-        include/msgpack/adaptor/cpp11/timespec.hpp
+-        include/msgpack/adaptor/cpp11/tuple.hpp
+-        include/msgpack/adaptor/cpp11/unique_ptr.hpp
+-        include/msgpack/adaptor/cpp11/unordered_map.hpp
+-        include/msgpack/adaptor/cpp11/unordered_set.hpp
+-        include/msgpack/adaptor/cpp17/byte.hpp
+-        include/msgpack/adaptor/cpp17/carray_byte.hpp
+-        include/msgpack/adaptor/cpp17/optional.hpp
+-        include/msgpack/adaptor/cpp17/string_view.hpp
+-        include/msgpack/adaptor/cpp17/vector_byte.hpp
+-        include/msgpack/adaptor/define.hpp
+-        include/msgpack/adaptor/define_decl.hpp
+-        include/msgpack/adaptor/deque.hpp
+-        include/msgpack/adaptor/ext.hpp
+-        include/msgpack/adaptor/ext_decl.hpp
+-        include/msgpack/adaptor/fixint.hpp
+-        include/msgpack/adaptor/fixint_decl.hpp
+-        include/msgpack/adaptor/float.hpp
+-        include/msgpack/adaptor/int.hpp
+-        include/msgpack/adaptor/int_decl.hpp
+-        include/msgpack/adaptor/list.hpp
+-        include/msgpack/adaptor/map.hpp
+-        include/msgpack/adaptor/map_decl.hpp
+-        include/msgpack/adaptor/msgpack_tuple.hpp
+-        include/msgpack/adaptor/msgpack_tuple_decl.hpp
+-        include/msgpack/adaptor/nil.hpp
+-        include/msgpack/adaptor/nil_decl.hpp
+-        include/msgpack/adaptor/pair.hpp
+-        include/msgpack/adaptor/raw.hpp
+-        include/msgpack/adaptor/raw_decl.hpp
+-        include/msgpack/adaptor/set.hpp
+-        include/msgpack/adaptor/size_equal_only.hpp
+-        include/msgpack/adaptor/size_equal_only_decl.hpp
+-        include/msgpack/adaptor/string.hpp
+-        include/msgpack/adaptor/tr1/unordered_map.hpp
+-        include/msgpack/adaptor/tr1/unordered_set.hpp
+-        include/msgpack/adaptor/v4raw.hpp
+-        include/msgpack/adaptor/v4raw_decl.hpp
+-        include/msgpack/adaptor/vector.hpp
+-        include/msgpack/adaptor/vector_bool.hpp
+-        include/msgpack/adaptor/vector_char.hpp
+-        include/msgpack/adaptor/vector_unsigned_char.hpp
+-        include/msgpack/adaptor/wstring.hpp
+-        include/msgpack/cpp_config.hpp
+-        include/msgpack/cpp_config_decl.hpp
+-        include/msgpack/create_object_visitor.hpp
+-        include/msgpack/create_object_visitor_decl.hpp
+-        include/msgpack/fbuffer.hpp
+-        include/msgpack/fbuffer_decl.hpp
+-        include/msgpack/gcc_atomic.hpp
+-        include/msgpack/iterator.hpp
+-        include/msgpack/iterator_decl.hpp
+-        include/msgpack/meta.hpp
+-        include/msgpack/meta_decl.hpp
+-        include/msgpack/null_visitor.hpp
+-        include/msgpack/null_visitor_decl.hpp
+-        include/msgpack/object.hpp
+-        include/msgpack/object_decl.hpp
+-        include/msgpack/object_fwd.hpp
+-        include/msgpack/object_fwd_decl.hpp
+-        include/msgpack/pack.hpp
+-        include/msgpack/pack_decl.hpp
+-        include/msgpack/parse.hpp
+-        include/msgpack/parse_decl.hpp
+-        include/msgpack/parse_return.hpp
+-        include/msgpack/preprocessor.hpp
+-        include/msgpack/preprocessor/arithmetic.hpp
+-        include/msgpack/preprocessor/arithmetic/add.hpp
+-        include/msgpack/preprocessor/arithmetic/dec.hpp
+-        include/msgpack/preprocessor/arithmetic/detail/div_base.hpp
+-        include/msgpack/preprocessor/arithmetic/div.hpp
+-        include/msgpack/preprocessor/arithmetic/inc.hpp
+-        include/msgpack/preprocessor/arithmetic/mod.hpp
+-        include/msgpack/preprocessor/arithmetic/mul.hpp
+-        include/msgpack/preprocessor/arithmetic/sub.hpp
+-        include/msgpack/preprocessor/array.hpp
+-        include/msgpack/preprocessor/array/data.hpp
+-        include/msgpack/preprocessor/array/detail/get_data.hpp
+-        include/msgpack/preprocessor/array/elem.hpp
+-        include/msgpack/preprocessor/array/enum.hpp
+-        include/msgpack/preprocessor/array/insert.hpp
+-        include/msgpack/preprocessor/array/pop_back.hpp
+-        include/msgpack/preprocessor/array/pop_front.hpp
+-        include/msgpack/preprocessor/array/push_back.hpp
+-        include/msgpack/preprocessor/array/push_front.hpp
+-        include/msgpack/preprocessor/array/remove.hpp
+-        include/msgpack/preprocessor/array/replace.hpp
+-        include/msgpack/preprocessor/array/reverse.hpp
+-        include/msgpack/preprocessor/array/size.hpp
+-        include/msgpack/preprocessor/array/to_list.hpp
+-        include/msgpack/preprocessor/array/to_seq.hpp
+-        include/msgpack/preprocessor/array/to_tuple.hpp
+-        include/msgpack/preprocessor/assert_msg.hpp
+-        include/msgpack/preprocessor/cat.hpp
+-        include/msgpack/preprocessor/comma.hpp
+-        include/msgpack/preprocessor/comma_if.hpp
+-        include/msgpack/preprocessor/comparison.hpp
+-        include/msgpack/preprocessor/comparison/equal.hpp
+-        include/msgpack/preprocessor/comparison/greater.hpp
+-        include/msgpack/preprocessor/comparison/greater_equal.hpp
+-        include/msgpack/preprocessor/comparison/less.hpp
+-        include/msgpack/preprocessor/comparison/less_equal.hpp
+-        include/msgpack/preprocessor/comparison/not_equal.hpp
+-        include/msgpack/preprocessor/config/config.hpp
+-        include/msgpack/preprocessor/config/limits.hpp
+-        include/msgpack/preprocessor/control.hpp
+-        include/msgpack/preprocessor/control/deduce_d.hpp
+-        include/msgpack/preprocessor/control/detail/dmc/while.hpp
+-        include/msgpack/preprocessor/control/detail/edg/while.hpp
+-        include/msgpack/preprocessor/control/detail/msvc/while.hpp
+-        include/msgpack/preprocessor/control/detail/while.hpp
+-        include/msgpack/preprocessor/control/expr_if.hpp
+-        include/msgpack/preprocessor/control/expr_iif.hpp
+-        include/msgpack/preprocessor/control/if.hpp
+-        include/msgpack/preprocessor/control/iif.hpp
+-        include/msgpack/preprocessor/control/while.hpp
+-        include/msgpack/preprocessor/debug.hpp
+-        include/msgpack/preprocessor/debug/assert.hpp
+-        include/msgpack/preprocessor/debug/error.hpp
+-        include/msgpack/preprocessor/debug/line.hpp
+-        include/msgpack/preprocessor/dec.hpp
+-        include/msgpack/preprocessor/detail/auto_rec.hpp
+-        include/msgpack/preprocessor/detail/check.hpp
+-        include/msgpack/preprocessor/detail/dmc/auto_rec.hpp
+-        include/msgpack/preprocessor/detail/is_binary.hpp
+-        include/msgpack/preprocessor/detail/is_nullary.hpp
+-        include/msgpack/preprocessor/detail/is_unary.hpp
+-        include/msgpack/preprocessor/detail/null.hpp
+-        include/msgpack/preprocessor/detail/split.hpp
+-        include/msgpack/preprocessor/empty.hpp
+-        include/msgpack/preprocessor/enum.hpp
+-        include/msgpack/preprocessor/enum_params.hpp
+-        include/msgpack/preprocessor/enum_params_with_a_default.hpp
+-        include/msgpack/preprocessor/enum_params_with_defaults.hpp
+-        include/msgpack/preprocessor/enum_shifted.hpp
+-        include/msgpack/preprocessor/enum_shifted_params.hpp
+-        include/msgpack/preprocessor/expand.hpp
+-        include/msgpack/preprocessor/expr_if.hpp
+-        include/msgpack/preprocessor/facilities.hpp
+-        include/msgpack/preprocessor/facilities/apply.hpp
+-        include/msgpack/preprocessor/facilities/detail/is_empty.hpp
+-        include/msgpack/preprocessor/facilities/empty.hpp
+-        include/msgpack/preprocessor/facilities/expand.hpp
+-        include/msgpack/preprocessor/facilities/identity.hpp
+-        include/msgpack/preprocessor/facilities/intercept.hpp
+-        include/msgpack/preprocessor/facilities/is_1.hpp
+-        include/msgpack/preprocessor/facilities/is_empty.hpp
+-        include/msgpack/preprocessor/facilities/is_empty_or_1.hpp
+-        include/msgpack/preprocessor/facilities/is_empty_variadic.hpp
+-        include/msgpack/preprocessor/facilities/overload.hpp
+-        include/msgpack/preprocessor/for.hpp
+-        include/msgpack/preprocessor/identity.hpp
+-        include/msgpack/preprocessor/if.hpp
+-        include/msgpack/preprocessor/inc.hpp
+-        include/msgpack/preprocessor/iterate.hpp
+-        include/msgpack/preprocessor/iteration.hpp
+-        include/msgpack/preprocessor/iteration/detail/bounds/lower1.hpp
+-        include/msgpack/preprocessor/iteration/detail/bounds/lower2.hpp
+-        include/msgpack/preprocessor/iteration/detail/bounds/lower3.hpp
+-        include/msgpack/preprocessor/iteration/detail/bounds/lower4.hpp
+-        include/msgpack/preprocessor/iteration/detail/bounds/lower5.hpp
+-        include/msgpack/preprocessor/iteration/detail/bounds/upper1.hpp
+-        include/msgpack/preprocessor/iteration/detail/bounds/upper2.hpp
+-        include/msgpack/preprocessor/iteration/detail/bounds/upper3.hpp
+-        include/msgpack/preprocessor/iteration/detail/bounds/upper4.hpp
+-        include/msgpack/preprocessor/iteration/detail/bounds/upper5.hpp
+-        include/msgpack/preprocessor/iteration/detail/finish.hpp
+-        include/msgpack/preprocessor/iteration/detail/iter/forward1.hpp
+-        include/msgpack/preprocessor/iteration/detail/iter/forward2.hpp
+-        include/msgpack/preprocessor/iteration/detail/iter/forward3.hpp
+-        include/msgpack/preprocessor/iteration/detail/iter/forward4.hpp
+-        include/msgpack/preprocessor/iteration/detail/iter/forward5.hpp
+-        include/msgpack/preprocessor/iteration/detail/iter/reverse1.hpp
+-        include/msgpack/preprocessor/iteration/detail/iter/reverse2.hpp
+-        include/msgpack/preprocessor/iteration/detail/iter/reverse3.hpp
+-        include/msgpack/preprocessor/iteration/detail/iter/reverse4.hpp
+-        include/msgpack/preprocessor/iteration/detail/iter/reverse5.hpp
+-        include/msgpack/preprocessor/iteration/detail/local.hpp
+-        include/msgpack/preprocessor/iteration/detail/rlocal.hpp
+-        include/msgpack/preprocessor/iteration/detail/self.hpp
+-        include/msgpack/preprocessor/iteration/detail/start.hpp
+-        include/msgpack/preprocessor/iteration/iterate.hpp
+-        include/msgpack/preprocessor/iteration/local.hpp
+-        include/msgpack/preprocessor/iteration/self.hpp
+-        include/msgpack/preprocessor/library.hpp
+-        include/msgpack/preprocessor/limits.hpp
+-        include/msgpack/preprocessor/list.hpp
+-        include/msgpack/preprocessor/list/adt.hpp
+-        include/msgpack/preprocessor/list/append.hpp
+-        include/msgpack/preprocessor/list/at.hpp
+-        include/msgpack/preprocessor/list/cat.hpp
+-        include/msgpack/preprocessor/list/detail/dmc/fold_left.hpp
+-        include/msgpack/preprocessor/list/detail/edg/fold_left.hpp
+-        include/msgpack/preprocessor/list/detail/edg/fold_right.hpp
+-        include/msgpack/preprocessor/list/detail/fold_left.hpp
+-        include/msgpack/preprocessor/list/detail/fold_right.hpp
+-        include/msgpack/preprocessor/list/enum.hpp
+-        include/msgpack/preprocessor/list/filter.hpp
+-        include/msgpack/preprocessor/list/first_n.hpp
+-        include/msgpack/preprocessor/list/fold_left.hpp
+-        include/msgpack/preprocessor/list/fold_right.hpp
+-        include/msgpack/preprocessor/list/for_each.hpp
+-        include/msgpack/preprocessor/list/for_each_i.hpp
+-        include/msgpack/preprocessor/list/for_each_product.hpp
+-        include/msgpack/preprocessor/list/rest_n.hpp
+-        include/msgpack/preprocessor/list/reverse.hpp
+-        include/msgpack/preprocessor/list/size.hpp
+-        include/msgpack/preprocessor/list/to_array.hpp
+-        include/msgpack/preprocessor/list/to_seq.hpp
+-        include/msgpack/preprocessor/list/to_tuple.hpp
+-        include/msgpack/preprocessor/list/transform.hpp
+-        include/msgpack/preprocessor/logical.hpp
+-        include/msgpack/preprocessor/logical/and.hpp
+-        include/msgpack/preprocessor/logical/bitand.hpp
+-        include/msgpack/preprocessor/logical/bitnor.hpp
+-        include/msgpack/preprocessor/logical/bitor.hpp
+-        include/msgpack/preprocessor/logical/bitxor.hpp
+-        include/msgpack/preprocessor/logical/bool.hpp
+-        include/msgpack/preprocessor/logical/compl.hpp
+-        include/msgpack/preprocessor/logical/nor.hpp
+-        include/msgpack/preprocessor/logical/not.hpp
+-        include/msgpack/preprocessor/logical/or.hpp
+-        include/msgpack/preprocessor/logical/xor.hpp
+-        include/msgpack/preprocessor/max.hpp
+-        include/msgpack/preprocessor/min.hpp
+-        include/msgpack/preprocessor/punctuation.hpp
+-        include/msgpack/preprocessor/punctuation/comma.hpp
+-        include/msgpack/preprocessor/punctuation/comma_if.hpp
+-        include/msgpack/preprocessor/punctuation/detail/is_begin_parens.hpp
+-        include/msgpack/preprocessor/punctuation/is_begin_parens.hpp
+-        include/msgpack/preprocessor/punctuation/paren.hpp
+-        include/msgpack/preprocessor/punctuation/paren_if.hpp
+-        include/msgpack/preprocessor/punctuation/remove_parens.hpp
+-        include/msgpack/preprocessor/repeat.hpp
+-        include/msgpack/preprocessor/repeat_2nd.hpp
+-        include/msgpack/preprocessor/repeat_3rd.hpp
+-        include/msgpack/preprocessor/repeat_from_to.hpp
+-        include/msgpack/preprocessor/repeat_from_to_2nd.hpp
+-        include/msgpack/preprocessor/repeat_from_to_3rd.hpp
+-        include/msgpack/preprocessor/repetition.hpp
+-        include/msgpack/preprocessor/repetition/deduce_r.hpp
+-        include/msgpack/preprocessor/repetition/deduce_z.hpp
+-        include/msgpack/preprocessor/repetition/detail/dmc/for.hpp
+-        include/msgpack/preprocessor/repetition/detail/edg/for.hpp
+-        include/msgpack/preprocessor/repetition/detail/for.hpp
+-        include/msgpack/preprocessor/repetition/detail/msvc/for.hpp
+-        include/msgpack/preprocessor/repetition/enum.hpp
+-        include/msgpack/preprocessor/repetition/enum_binary_params.hpp
+-        include/msgpack/preprocessor/repetition/enum_params.hpp
+-        include/msgpack/preprocessor/repetition/enum_params_with_a_default.hpp
+-        include/msgpack/preprocessor/repetition/enum_params_with_defaults.hpp
+-        include/msgpack/preprocessor/repetition/enum_shifted.hpp
+-        include/msgpack/preprocessor/repetition/enum_shifted_binary_params.hpp
+-        include/msgpack/preprocessor/repetition/enum_shifted_params.hpp
+-        include/msgpack/preprocessor/repetition/enum_trailing.hpp
+-        include/msgpack/preprocessor/repetition/enum_trailing_binary_params.hpp
+-        include/msgpack/preprocessor/repetition/enum_trailing_params.hpp
+-        include/msgpack/preprocessor/repetition/for.hpp
+-        include/msgpack/preprocessor/repetition/repeat.hpp
+-        include/msgpack/preprocessor/repetition/repeat_from_to.hpp
+-        include/msgpack/preprocessor/selection.hpp
+-        include/msgpack/preprocessor/selection/max.hpp
+-        include/msgpack/preprocessor/selection/min.hpp
+-        include/msgpack/preprocessor/seq.hpp
+-        include/msgpack/preprocessor/seq/cat.hpp
+-        include/msgpack/preprocessor/seq/detail/binary_transform.hpp
+-        include/msgpack/preprocessor/seq/detail/is_empty.hpp
+-        include/msgpack/preprocessor/seq/detail/split.hpp
+-        include/msgpack/preprocessor/seq/detail/to_list_msvc.hpp
+-        include/msgpack/preprocessor/seq/elem.hpp
+-        include/msgpack/preprocessor/seq/enum.hpp
+-        include/msgpack/preprocessor/seq/filter.hpp
+-        include/msgpack/preprocessor/seq/first_n.hpp
+-        include/msgpack/preprocessor/seq/fold_left.hpp
+-        include/msgpack/preprocessor/seq/fold_right.hpp
+-        include/msgpack/preprocessor/seq/for_each.hpp
+-        include/msgpack/preprocessor/seq/for_each_i.hpp
+-        include/msgpack/preprocessor/seq/for_each_product.hpp
+-        include/msgpack/preprocessor/seq/insert.hpp
+-        include/msgpack/preprocessor/seq/pop_back.hpp
+-        include/msgpack/preprocessor/seq/pop_front.hpp
+-        include/msgpack/preprocessor/seq/push_back.hpp
+-        include/msgpack/preprocessor/seq/push_front.hpp
+-        include/msgpack/preprocessor/seq/remove.hpp
+-        include/msgpack/preprocessor/seq/replace.hpp
+-        include/msgpack/preprocessor/seq/rest_n.hpp
+-        include/msgpack/preprocessor/seq/reverse.hpp
+-        include/msgpack/preprocessor/seq/seq.hpp
+-        include/msgpack/preprocessor/seq/size.hpp
+-        include/msgpack/preprocessor/seq/subseq.hpp
+-        include/msgpack/preprocessor/seq/to_array.hpp
+-        include/msgpack/preprocessor/seq/to_list.hpp
+-        include/msgpack/preprocessor/seq/to_tuple.hpp
+-        include/msgpack/preprocessor/seq/transform.hpp
+-        include/msgpack/preprocessor/seq/variadic_seq_to_seq.hpp
+-        include/msgpack/preprocessor/slot.hpp
+-        include/msgpack/preprocessor/slot/counter.hpp
+-        include/msgpack/preprocessor/slot/detail/counter.hpp
+-        include/msgpack/preprocessor/slot/detail/def.hpp
+-        include/msgpack/preprocessor/slot/detail/shared.hpp
+-        include/msgpack/preprocessor/slot/detail/slot1.hpp
+-        include/msgpack/preprocessor/slot/detail/slot2.hpp
+-        include/msgpack/preprocessor/slot/detail/slot3.hpp
+-        include/msgpack/preprocessor/slot/detail/slot4.hpp
+-        include/msgpack/preprocessor/slot/detail/slot5.hpp
+-        include/msgpack/preprocessor/slot/slot.hpp
+-        include/msgpack/preprocessor/stringize.hpp
+-        include/msgpack/preprocessor/tuple.hpp
+-        include/msgpack/preprocessor/tuple/detail/is_single_return.hpp
+-        include/msgpack/preprocessor/tuple/eat.hpp
+-        include/msgpack/preprocessor/tuple/elem.hpp
+-        include/msgpack/preprocessor/tuple/enum.hpp
+-        include/msgpack/preprocessor/tuple/insert.hpp
+-        include/msgpack/preprocessor/tuple/pop_back.hpp
+-        include/msgpack/preprocessor/tuple/pop_front.hpp
+-        include/msgpack/preprocessor/tuple/push_back.hpp
+-        include/msgpack/preprocessor/tuple/push_front.hpp
+-        include/msgpack/preprocessor/tuple/rem.hpp
+-        include/msgpack/preprocessor/tuple/remove.hpp
+-        include/msgpack/preprocessor/tuple/replace.hpp
+-        include/msgpack/preprocessor/tuple/reverse.hpp
+-        include/msgpack/preprocessor/tuple/size.hpp
+-        include/msgpack/preprocessor/tuple/to_array.hpp
+-        include/msgpack/preprocessor/tuple/to_list.hpp
+-        include/msgpack/preprocessor/tuple/to_seq.hpp
+-        include/msgpack/preprocessor/variadic.hpp
+-        include/msgpack/preprocessor/variadic/detail/is_single_return.hpp
+-        include/msgpack/preprocessor/variadic/elem.hpp
+-        include/msgpack/preprocessor/variadic/size.hpp
+-        include/msgpack/preprocessor/variadic/to_array.hpp
+-        include/msgpack/preprocessor/variadic/to_list.hpp
+-        include/msgpack/preprocessor/variadic/to_seq.hpp
+-        include/msgpack/preprocessor/variadic/to_tuple.hpp
+-        include/msgpack/preprocessor/while.hpp
+-        include/msgpack/preprocessor/wstringize.hpp
+-        include/msgpack/sbuffer.hpp
+-        include/msgpack/sbuffer_decl.hpp
+-        include/msgpack/type.hpp
+-        include/msgpack/unpack.hpp
+-        include/msgpack/unpack_decl.hpp
+-        include/msgpack/unpack_exception.hpp
+-        include/msgpack/v1/adaptor/adaptor_base.hpp
+-        include/msgpack/v1/adaptor/adaptor_base_decl.hpp
+-        include/msgpack/v1/adaptor/array_ref.hpp
+-        include/msgpack/v1/adaptor/array_ref_decl.hpp
+-        include/msgpack/v1/adaptor/bool.hpp
+-        include/msgpack/v1/adaptor/boost/fusion.hpp
+-        include/msgpack/v1/adaptor/boost/msgpack_variant.hpp
+-        include/msgpack/v1/adaptor/boost/msgpack_variant_decl.hpp
+-        include/msgpack/v1/adaptor/boost/optional.hpp
+-        include/msgpack/v1/adaptor/boost/string_ref.hpp
+-        include/msgpack/v1/adaptor/boost/string_view.hpp
+-        include/msgpack/v1/adaptor/carray.hpp
+-        include/msgpack/v1/adaptor/char_ptr.hpp
+-        include/msgpack/v1/adaptor/check_container_size.hpp
+-        include/msgpack/v1/adaptor/check_container_size_decl.hpp
+-        include/msgpack/v1/adaptor/cpp11/array.hpp
+-        include/msgpack/v1/adaptor/cpp11/array_char.hpp
+-        include/msgpack/v1/adaptor/cpp11/array_unsigned_char.hpp
+-        include/msgpack/v1/adaptor/cpp11/chrono.hpp
+-        include/msgpack/v1/adaptor/cpp11/forward_list.hpp
+-        include/msgpack/v1/adaptor/cpp11/reference_wrapper.hpp
+-        include/msgpack/v1/adaptor/cpp11/shared_ptr.hpp
+-        include/msgpack/v1/adaptor/cpp11/timespec.hpp
+-        include/msgpack/v1/adaptor/cpp11/tuple.hpp
+-        include/msgpack/v1/adaptor/cpp11/unique_ptr.hpp
+-        include/msgpack/v1/adaptor/cpp11/unordered_map.hpp
+-        include/msgpack/v1/adaptor/cpp11/unordered_set.hpp
+-        include/msgpack/v1/adaptor/cpp17/byte.hpp
+-        include/msgpack/v1/adaptor/cpp17/carray_byte.hpp
+-        include/msgpack/v1/adaptor/cpp17/optional.hpp
+-        include/msgpack/v1/adaptor/cpp17/string_view.hpp
+-        include/msgpack/v1/adaptor/cpp17/vector_byte.hpp
+-        include/msgpack/v1/adaptor/define.hpp
+-        include/msgpack/v1/adaptor/define_decl.hpp
+-        include/msgpack/v1/adaptor/deque.hpp
+-        include/msgpack/v1/adaptor/detail/cpp03_define_array.hpp
+-        include/msgpack/v1/adaptor/detail/cpp03_define_array_decl.hpp
+-        include/msgpack/v1/adaptor/detail/cpp03_define_map.hpp
+-        include/msgpack/v1/adaptor/detail/cpp03_define_map_decl.hpp
+-        include/msgpack/v1/adaptor/detail/cpp03_msgpack_tuple.hpp
+-        include/msgpack/v1/adaptor/detail/cpp03_msgpack_tuple_decl.hpp
+-        include/msgpack/v1/adaptor/detail/cpp11_convert_helper.hpp
+-        include/msgpack/v1/adaptor/detail/cpp11_define_array.hpp
+-        include/msgpack/v1/adaptor/detail/cpp11_define_array_decl.hpp
+-        include/msgpack/v1/adaptor/detail/cpp11_define_map.hpp
+-        include/msgpack/v1/adaptor/detail/cpp11_define_map_decl.hpp
+-        include/msgpack/v1/adaptor/detail/cpp11_msgpack_tuple.hpp
+-        include/msgpack/v1/adaptor/detail/cpp11_msgpack_tuple_decl.hpp
+-        include/msgpack/v1/adaptor/ext.hpp
+-        include/msgpack/v1/adaptor/ext_decl.hpp
+-        include/msgpack/v1/adaptor/fixint.hpp
+-        include/msgpack/v1/adaptor/fixint_decl.hpp
+-        include/msgpack/v1/adaptor/float.hpp
+-        include/msgpack/v1/adaptor/int.hpp
+-        include/msgpack/v1/adaptor/int_decl.hpp
+-        include/msgpack/v1/adaptor/list.hpp
+-        include/msgpack/v1/adaptor/map.hpp
+-        include/msgpack/v1/adaptor/map_decl.hpp
+-        include/msgpack/v1/adaptor/msgpack_tuple.hpp
+-        include/msgpack/v1/adaptor/msgpack_tuple_decl.hpp
+-        include/msgpack/v1/adaptor/nil.hpp
+-        include/msgpack/v1/adaptor/nil_decl.hpp
+-        include/msgpack/v1/adaptor/pair.hpp
+-        include/msgpack/v1/adaptor/raw.hpp
+-        include/msgpack/v1/adaptor/raw_decl.hpp
+-        include/msgpack/v1/adaptor/set.hpp
+-        include/msgpack/v1/adaptor/size_equal_only.hpp
+-        include/msgpack/v1/adaptor/size_equal_only_decl.hpp
+-        include/msgpack/v1/adaptor/string.hpp
+-        include/msgpack/v1/adaptor/tr1/unordered_map.hpp
+-        include/msgpack/v1/adaptor/tr1/unordered_set.hpp
+-        include/msgpack/v1/adaptor/v4raw.hpp
+-        include/msgpack/v1/adaptor/v4raw_decl.hpp
+-        include/msgpack/v1/adaptor/vector.hpp
+-        include/msgpack/v1/adaptor/vector_bool.hpp
+-        include/msgpack/v1/adaptor/vector_char.hpp
+-        include/msgpack/v1/adaptor/vector_unsigned_char.hpp
+-        include/msgpack/v1/adaptor/wstring.hpp
+-        include/msgpack/v1/cpp_config.hpp
+-        include/msgpack/v1/cpp_config_decl.hpp
+-        include/msgpack/v1/detail/cpp03_zone.hpp
+-        include/msgpack/v1/detail/cpp03_zone_decl.hpp
+-        include/msgpack/v1/detail/cpp11_zone.hpp
+-        include/msgpack/v1/detail/cpp11_zone_decl.hpp
+-        include/msgpack/v1/fbuffer.hpp
+-        include/msgpack/v1/fbuffer_decl.hpp
+-        include/msgpack/v1/iterator.hpp
+-        include/msgpack/v1/iterator_decl.hpp
+-        include/msgpack/v1/meta.hpp
+-        include/msgpack/v1/meta_decl.hpp
+-        include/msgpack/v1/object.hpp
+-        include/msgpack/v1/object_decl.hpp
+-        include/msgpack/v1/object_fwd.hpp
+-        include/msgpack/v1/object_fwd_decl.hpp
+-        include/msgpack/v1/pack.hpp
+-        include/msgpack/v1/pack_decl.hpp
+-        include/msgpack/v1/parse_return.hpp
+-        include/msgpack/v1/preprocessor.hpp
+-        include/msgpack/v1/sbuffer.hpp
+-        include/msgpack/v1/sbuffer_decl.hpp
+-        include/msgpack/v1/unpack.hpp
+-        include/msgpack/v1/unpack_decl.hpp
+-        include/msgpack/v1/unpack_exception.hpp
+-        include/msgpack/v1/version.hpp
+-        include/msgpack/v1/versioning.hpp
+-        include/msgpack/v1/vrefbuffer.hpp
+-        include/msgpack/v1/vrefbuffer_decl.hpp
+-        include/msgpack/v1/zbuffer.hpp
+-        include/msgpack/v1/zbuffer_decl.hpp
+-        include/msgpack/v1/zone.hpp
+-        include/msgpack/v1/zone_decl.hpp
+-        include/msgpack/v2/adaptor/adaptor_base.hpp
+-        include/msgpack/v2/adaptor/adaptor_base_decl.hpp
+-        include/msgpack/v2/adaptor/array_ref_decl.hpp
+-        include/msgpack/v2/adaptor/boost/msgpack_variant_decl.hpp
+-        include/msgpack/v2/adaptor/check_container_size_decl.hpp
+-        include/msgpack/v2/adaptor/define_decl.hpp
+-        include/msgpack/v2/adaptor/detail/cpp03_define_array_decl.hpp
+-        include/msgpack/v2/adaptor/detail/cpp03_define_map_decl.hpp
+-        include/msgpack/v2/adaptor/detail/cpp03_msgpack_tuple_decl.hpp
+-        include/msgpack/v2/adaptor/detail/cpp11_define_array_decl.hpp
+-        include/msgpack/v2/adaptor/detail/cpp11_define_map_decl.hpp
+-        include/msgpack/v2/adaptor/detail/cpp11_msgpack_tuple_decl.hpp
+-        include/msgpack/v2/adaptor/ext_decl.hpp
+-        include/msgpack/v2/adaptor/fixint_decl.hpp
+-        include/msgpack/v2/adaptor/int_decl.hpp
+-        include/msgpack/v2/adaptor/map_decl.hpp
+-        include/msgpack/v2/adaptor/msgpack_tuple_decl.hpp
+-        include/msgpack/v2/adaptor/nil_decl.hpp
+-        include/msgpack/v2/adaptor/raw_decl.hpp
+-        include/msgpack/v2/adaptor/size_equal_only_decl.hpp
+-        include/msgpack/v2/adaptor/v4raw_decl.hpp
+-        include/msgpack/v2/cpp_config_decl.hpp
+-        include/msgpack/v2/create_object_visitor.hpp
+-        include/msgpack/v2/create_object_visitor_decl.hpp
+-        include/msgpack/v2/detail/cpp03_zone_decl.hpp
+-        include/msgpack/v2/detail/cpp11_zone_decl.hpp
+-        include/msgpack/v2/fbuffer_decl.hpp
+-        include/msgpack/v2/iterator_decl.hpp
+-        include/msgpack/v2/meta_decl.hpp
+-        include/msgpack/v2/null_visitor.hpp
+-        include/msgpack/v2/null_visitor_decl.hpp
+-        include/msgpack/v2/object.hpp
+-        include/msgpack/v2/object_decl.hpp
+-        include/msgpack/v2/object_fwd.hpp
+-        include/msgpack/v2/object_fwd_decl.hpp
+-        include/msgpack/v2/pack_decl.hpp
+-        include/msgpack/v2/parse.hpp
+-        include/msgpack/v2/parse_decl.hpp
+-        include/msgpack/v2/parse_return.hpp
+-        include/msgpack/v2/sbuffer_decl.hpp
+-        include/msgpack/v2/unpack.hpp
+-        include/msgpack/v2/unpack_decl.hpp
+-        include/msgpack/v2/vrefbuffer_decl.hpp
+-        include/msgpack/v2/x3_parse.hpp
+-        include/msgpack/v2/x3_parse_decl.hpp
+-        include/msgpack/v2/x3_unpack.hpp
+-        include/msgpack/v2/x3_unpack_decl.hpp
+-        include/msgpack/v2/zbuffer_decl.hpp
+-        include/msgpack/v2/zone_decl.hpp
+-        include/msgpack/v3/adaptor/adaptor_base.hpp
+-        include/msgpack/v3/adaptor/adaptor_base_decl.hpp
+-        include/msgpack/v3/adaptor/array_ref_decl.hpp
+-        include/msgpack/v3/adaptor/boost/msgpack_variant_decl.hpp
+-        include/msgpack/v3/adaptor/check_container_size_decl.hpp
+-        include/msgpack/v3/adaptor/define_decl.hpp
+-        include/msgpack/v3/adaptor/detail/cpp03_define_array_decl.hpp
+-        include/msgpack/v3/adaptor/detail/cpp03_define_map_decl.hpp
+-        include/msgpack/v3/adaptor/detail/cpp03_msgpack_tuple_decl.hpp
+-        include/msgpack/v3/adaptor/detail/cpp11_define_array_decl.hpp
+-        include/msgpack/v3/adaptor/detail/cpp11_define_map_decl.hpp
+-        include/msgpack/v3/adaptor/detail/cpp11_msgpack_tuple_decl.hpp
+-        include/msgpack/v3/adaptor/ext_decl.hpp
+-        include/msgpack/v3/adaptor/fixint_decl.hpp
+-        include/msgpack/v3/adaptor/int_decl.hpp
+-        include/msgpack/v3/adaptor/map_decl.hpp
+-        include/msgpack/v3/adaptor/msgpack_tuple_decl.hpp
+-        include/msgpack/v3/adaptor/nil_decl.hpp
+-        include/msgpack/v3/adaptor/raw_decl.hpp
+-        include/msgpack/v3/adaptor/size_equal_only_decl.hpp
+-        include/msgpack/v3/adaptor/v4raw_decl.hpp
+-        include/msgpack/v3/cpp_config_decl.hpp
+-        include/msgpack/v3/create_object_visitor_decl.hpp
+-        include/msgpack/v3/detail/cpp03_zone_decl.hpp
+-        include/msgpack/v3/detail/cpp11_zone_decl.hpp
+-        include/msgpack/v3/fbuffer_decl.hpp
+-        include/msgpack/v3/iterator_decl.hpp
+-        include/msgpack/v3/meta_decl.hpp
+-        include/msgpack/v3/null_visitor_decl.hpp
+-        include/msgpack/v3/object_decl.hpp
+-        include/msgpack/v3/object_fwd.hpp
+-        include/msgpack/v3/object_fwd_decl.hpp
+-        include/msgpack/v3/pack_decl.hpp
+-        include/msgpack/v3/parse.hpp
+-        include/msgpack/v3/parse_decl.hpp
+-        include/msgpack/v3/parse_return.hpp
+-        include/msgpack/v3/sbuffer_decl.hpp
+-        include/msgpack/v3/unpack.hpp
+-        include/msgpack/v3/unpack_decl.hpp
+-        include/msgpack/v3/vrefbuffer_decl.hpp
+-        include/msgpack/v3/x3_parse_decl.hpp
+-        include/msgpack/v3/x3_unpack.hpp
+-        include/msgpack/v3/x3_unpack_decl.hpp
+-        include/msgpack/v3/zbuffer_decl.hpp
+-        include/msgpack/v3/zone_decl.hpp
+-        include/msgpack/version.hpp
+-        include/msgpack/versioning.hpp
+-        include/msgpack/vrefbuffer.hpp
+-        include/msgpack/vrefbuffer_decl.hpp
+-        include/msgpack/x3_parse.hpp
+-        include/msgpack/x3_parse_decl.hpp
+-        include/msgpack/x3_unpack.hpp
+-        include/msgpack/x3_unpack_decl.hpp
+-        include/msgpack/zbuffer.hpp
+-        include/msgpack/zbuffer_decl.hpp
+-        include/msgpack/zone.hpp
+-        include/msgpack/zone_decl.hpp
+-    )
+-ENDIF ()
+diff --git a/ci/build_cmake.sh b/ci/build_cmake.sh
+index 923e02be..483446a4 100755
+--- a/ci/build_cmake.sh
++++ b/ci/build_cmake.sh
+@@ -25,7 +25,7 @@ else
+     export ARCH_FLAG="-m64"
+ fi
+ 
+-cmake -DMSGPACK_CXX11=${CXX11} -DMSGPACK_CXX17=${CXX17} -DMSGPACK_32BIT=${BIT32} -DMSGPACK_BOOST=${BOOST} -DBUILD_SHARED_LIBS=${SHARED} -DMSGPACK_CHAR_SIGN=${CHAR_SIGN} -DMSGPACK_DEFAULT_API_VERSION=${API_VERSION} -DMSGPACK_USE_X3_PARSE=${X3_PARSE} -DCMAKE_CXX_FLAGS=${ARCH_FLAG} ..
++cmake -DMSGPACK_32BIT=${BIT32} -DBUILD_SHARED_LIBS=${SHARED} -DMSGPACK_CHAR_SIGN=${CHAR_SIGN} -DCMAKE_CXX_FLAGS=${ARCH_FLAG} ..
+ 
+ ret=$?
+ if [ $ret -ne 0 ]
+diff --git a/example/cmake/CMakeLists.txt b/example/cmake/CMakeLists.txt
+index 8c885ea5..2f832ab7 100644
+--- a/example/cmake/CMakeLists.txt
++++ b/example/cmake/CMakeLists.txt
+@@ -8,10 +8,10 @@ endif()
+ 
+ find_package(msgpack REQUIRED)
+ 
+-add_executable (${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/../c/simple_c.c)
++add_executable (${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/../simple_c.c)
+ target_link_libraries(${PROJECT_NAME} msgpackc)
+ 
+ if(TARGET msgpackc-static)
+-    add_executable (${PROJECT_NAME}-static ${CMAKE_CURRENT_LIST_DIR}/../c/simple_c.c)
++    add_executable (${PROJECT_NAME}-static ${CMAKE_CURRENT_LIST_DIR}/../simple_c.c)
+     target_link_libraries(${PROJECT_NAME}-static msgpackc-static)
+ endif()
+diff --git a/include/msgpack/sysdep.h b/include/msgpack/sysdep.h
+index a1967338..1fb50205 100644
+--- a/include/msgpack/sysdep.h
++++ b/include/msgpack/sysdep.h
+@@ -93,9 +93,7 @@
+ 
+ #endif
+ 
+-#if !defined(MSGPACK_ENDIAN_LITTLE_BYTE) && !defined(MSGPACK_ENDIAN_BIG_BYTE)
+-#include <msgpack/predef/other/endian.h>
+-#endif // !defined(MSGPACK_ENDIAN_LITTLE_BYTE) && !defined(MSGPACK_ENDIAN_BIG_BYTE)
++#define MSGPACK_ENDIAN_LITTLE_BYTE 1
+ 
+ #if MSGPACK_ENDIAN_LITTLE_BYTE
+ 
+diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
+index c86bfc53..b2cdff36 100644
+--- a/test/CMakeLists.txt
++++ b/test/CMakeLists.txt
+@@ -7,85 +7,14 @@ INCLUDE_DIRECTORIES (
+     ${ZLIB_INCLUDE_DIRS}
+ )
+ 
+-SET (tests_C
++SET (check_PROGRAMS
++    buffer.cpp
+     fixint_c.cpp
+     msgpack_c.cpp
+     pack_unpack_c.cpp
+     streaming_c.cpp
+ )
+ 
+-IF (NOT MSGPACK_CXX_ONLY)
+-    LIST (APPEND check_PROGRAMS
+-        ${tests_C}
+-    )
+-ENDIF ()
+-
+-IF (MSGPACK_ENABLE_CXX)
+-    LIST (APPEND check_PROGRAMS
+-        array_ref.cpp
+-        buffer.cpp
+-        carray.cpp
+-        cases.cpp
+-        convert.cpp
+-        fixint.cpp
+-        inc_adaptor_define.cpp
+-        json.cpp
+-        limit.cpp
+-        msgpack_basic.cpp
+-        msgpack_container.cpp
+-        msgpack_stream.cpp
+-        msgpack_tuple.cpp
+-        msgpack_vref.cpp
+-        object.cpp
+-        object_with_zone.cpp
+-        pack_unpack.cpp
+-        raw.cpp
+-        reference.cpp
+-        size_equal_only.cpp
+-        streaming.cpp
+-        user_class.cpp
+-        version.cpp
+-        visitor.cpp
+-        zone.cpp
+-    )
+-
+-    IF (MSGPACK_BOOST)
+-        LIST (APPEND check_PROGRAMS
+-            boost_fusion.cpp
+-            boost_variant.cpp
+-            boost_optional.cpp
+-            boost_string_ref.cpp
+-            boost_string_view.cpp
+-        )
+-    ENDIF ()
+-
+-    IF (MSGPACK_USE_X3_PARSE)
+-        LIST (APPEND check_PROGRAMS
+-            msgpack_x3_parse.cpp
+-        )
+-    ENDIF ()
+-
+-    IF (MSGPACK_CXX11 OR MSGPACK_CXX17)
+-        LIST (APPEND check_PROGRAMS
+-            iterator_cpp11.cpp
+-            msgpack_cpp11.cpp
+-            reference_cpp11.cpp
+-            reference_wrapper_cpp11.cpp
+-            shared_ptr_cpp11.cpp
+-            unique_ptr_cpp11.cpp
+-
+-            # fuzzers are cpp11 only
+-            fuzz_unpack_pack_fuzzer_cpp11.cpp
+-        )
+-    ENDIF ()
+-
+-    IF (MSGPACK_CXX17)
+-        LIST (APPEND check_PROGRAMS
+-            msgpack_cpp17.cpp
+-        )
+-    ENDIF ()
+-ENDIF (MSGPACK_ENABLE_CXX)
+-
+ FOREACH (source_file ${check_PROGRAMS})
+     GET_FILENAME_COMPONENT (source_file_we ${source_file} NAME_WE)
+     ADD_EXECUTABLE (
+@@ -93,15 +22,8 @@ FOREACH (source_file ${check_PROGRAMS})
+         ${source_file}
+     )
+ 
+-    LIST (FIND tests_C ${source_file} idx)
+-    IF (idx GREATER -1)
+-        SET (link_target msgpackc)
+-    ELSE ()
+-        SET (link_target msgpackc-cxx)
+-    ENDIF ()
+-
+     TARGET_LINK_LIBRARIES (${source_file_we}
+-        ${link_target}
++        msgpackc
+         ${GTEST_BOTH_LIBRARIES}
+         ${ZLIB_LIBRARIES}
+         ${CMAKE_THREAD_LIBS_INIT}
+@@ -122,15 +44,3 @@ FOREACH (source_file ${check_PROGRAMS})
+         ENDIF ()
+     ENDIF ()
+ ENDFOREACH ()
+-
+-IF (MSGPACK_ENABLE_CXX)
+-    ADD_EXECUTABLE (
+-        multi_file
+-        multi_file1.cpp multi_file2.cpp
+-    )
+-    TARGET_INCLUDE_DIRECTORIES (multi_file
+-        PRIVATE
+-            $<TARGET_PROPERTY:msgpackc-cxx,INTERFACE_INCLUDE_DIRECTORIES>
+-    )
+-    ADD_TEST (multi_file multi_file)
+-ENDIF ()
+diff --git a/test/buffer.cpp b/test/buffer.cpp
+index 4e099e22..bdedc17f 100644
+--- a/test/buffer.cpp
++++ b/test/buffer.cpp
+@@ -1,7 +1,4 @@
+-#include <msgpack.hpp>
+-#include <msgpack/fbuffer.hpp>
+ #include <msgpack/fbuffer.h>
+-#include <msgpack/zbuffer.hpp>
+ #include <msgpack/zbuffer.h>
+ 
+ #if defined(__GNUC__)
+@@ -17,75 +14,6 @@
+ 
+ #include <string.h>
+ 
+-TEST(buffer, sbuffer)
+-{
+-    msgpack::sbuffer sbuf;
+-    sbuf.write("a", 1);
+-    sbuf.write("a", 1);
+-    sbuf.write("a", 1);
+-
+-    EXPECT_EQ(3ul, sbuf.size());
+-    EXPECT_TRUE( memcmp(sbuf.data(), "aaa", 3) == 0 );
+-
+-    sbuf.clear();
+-    sbuf.write("a", 1);
+-    sbuf.write("a", 1);
+-    sbuf.write("a", 1);
+-
+-    EXPECT_EQ(3ul, sbuf.size());
+-    EXPECT_TRUE( memcmp(sbuf.data(), "aaa", 3) == 0 );
+-}
+-
+-
+-TEST(buffer, vrefbuffer)
+-{
+-    msgpack::vrefbuffer vbuf;
+-    vbuf.write("a", 1);
+-    vbuf.write("a", 1);
+-    vbuf.write("a", 1);
+-
+-    const struct iovec* vec = vbuf.vector();
+-    size_t veclen = vbuf.vector_size();
+-
+-    msgpack::sbuffer sbuf;
+-    for(size_t i=0; i < veclen; ++i) {
+-        sbuf.write((const char*)vec[i].iov_base, vec[i].iov_len);
+-    }
+-
+-    EXPECT_EQ(3ul, sbuf.size());
+-    EXPECT_TRUE( memcmp(sbuf.data(), "aaa", 3) == 0 );
+-
+-
+-    vbuf.clear();
+-    vbuf.write("a", 1);
+-    vbuf.write("a", 1);
+-    vbuf.write("a", 1);
+-
+-    vec = vbuf.vector();
+-    veclen = vbuf.vector_size();
+-
+-    sbuf.clear();
+-    for(size_t i=0; i < veclen; ++i) {
+-        sbuf.write((const char*)vec[i].iov_base, vec[i].iov_len);
+-    }
+-
+-    EXPECT_EQ(3ul, sbuf.size());
+-    EXPECT_TRUE( memcmp(sbuf.data(), "aaa", 3) == 0 );
+-}
+-
+-
+-TEST(buffer, zbuffer)
+-{
+-    msgpack::zbuffer zbuf;
+-    zbuf.write("a", 1);
+-    zbuf.write("a", 1);
+-    zbuf.write("a", 1);
+-    zbuf.write("", 0);
+-
+-    zbuf.flush();
+-}
+-
+-
+ TEST(buffer, zbuffer_c)
+ {
+     msgpack_zbuffer zbuf;
+@@ -100,36 +28,6 @@ TEST(buffer, zbuffer_c)
+     msgpack_zbuffer_destroy(&zbuf);
+ }
+ 
+-
+-TEST(buffer, fbuffer)
+-{
+-#if defined(_MSC_VER)
+-    FILE* file;
+-    tmpfile_s(&file);
+-#else  // defined(_MSC_VER)
+-    FILE* file = tmpfile();
+-#endif // defined(_MSC_VER)
+-    EXPECT_TRUE( file != NULL );
+-
+-    msgpack::fbuffer fbuf(file);
+-    EXPECT_EQ(file, fbuf.file());
+-
+-    fbuf.write("a", 1);
+-    fbuf.write("a", 1);
+-    fbuf.write("a", 1);
+-
+-    fflush(file);
+-    rewind(file);
+-    for (size_t i=0; i < 3; ++i) {
+-        int ch = fgetc(file);
+-        EXPECT_TRUE(ch != EOF);
+-        EXPECT_EQ('a', static_cast<char>(ch));
+-    }
+-    EXPECT_EQ(EOF, fgetc(file));
+-    fclose(file);
+-}
+-
+-
+ TEST(buffer, fbuffer_c)
+ {
+ #if defined(_MSC_VER)
