@@ -60,11 +60,7 @@
 #endif
 #elif defined(__GNUC__) && ((__GNUC__*10 + __GNUC_MINOR__) < 41)
 
-#   if defined(__cplusplus)
-#       define _msgpack_atomic_counter_header "msgpack/gcc_atomic.hpp"
-#   else
-#       define _msgpack_atomic_counter_header "msgpack/gcc_atomic.h"
-#   endif
+#    define _msgpack_atomic_counter_header "msgpack/gcc_atomic.hpp"
 
 #else
     typedef unsigned int _msgpack_atomic_counter_t;
@@ -94,7 +90,9 @@
 #endif
 
 #if !defined(MSGPACK_ENDIAN_LITTLE_BYTE) && !defined(MSGPACK_ENDIAN_BIG_BYTE)
-#include <msgpack/predef/other/endian.h>
+#include <boost/predef/other/endian.h>
+#define  MSGPACK_ENDIAN_LITTLE_BYTE  BOOST_ENDIAN_LITTLE_BYTE
+#define  MSGPACK_ENDIAN_BIG_BYTE  BOOST_ENDIAN_BIG_BYTE
 #endif // !defined(MSGPACK_ENDIAN_LITTLE_BYTE) && !defined(MSGPACK_ENDIAN_BIG_BYTE)
 
 #if MSGPACK_ENDIAN_LITTLE_BYTE

@@ -1,4 +1,4 @@
-`msgpack` for C/C++
+`msgpack` for C++
 ===================
 
 Version 3.2.1 [![Build Status](https://travis-ci.org/msgpack/msgpack-c.svg?branch=master)](https://travis-ci.org/msgpack/msgpack-c) [![Build status](https://ci.appveyor.com/api/projects/status/8kstcgt79qj123mw/branch/master?svg=true)](https://ci.appveyor.com/project/redboltz/msgpack-c/branch/master)
@@ -17,49 +17,6 @@ addition to the strings themselves.
 
 Example
 -------
-
-In C:
-
-```c
-#include <msgpack.h>
-#include <stdio.h>
-
-int main(void)
-{
-    /* msgpack::sbuffer is a simple buffer implementation. */
-    msgpack_sbuffer sbuf;
-    msgpack_sbuffer_init(&sbuf);
-
-    /* serialize values into the buffer using msgpack_sbuffer_write callback function. */
-    msgpack_packer pk;
-    msgpack_packer_init(&pk, &sbuf, msgpack_sbuffer_write);
-
-    msgpack_pack_array(&pk, 3);
-    msgpack_pack_int(&pk, 1);
-    msgpack_pack_true(&pk);
-    msgpack_pack_str(&pk, 7);
-    msgpack_pack_str_body(&pk, "example", 7);
-
-    /* deserialize the buffer into msgpack_object instance. */
-    /* deserialized object is valid during the msgpack_zone instance alive. */
-    msgpack_zone mempool;
-    msgpack_zone_init(&mempool, 2048);
-
-    msgpack_object deserialized;
-    msgpack_unpack(sbuf.data, sbuf.size, NULL, &mempool, &deserialized);
-
-    /* print the deserialized object. */
-    msgpack_object_print(stdout, deserialized);
-    puts("");
-
-    msgpack_zone_destroy(&mempool);
-    msgpack_sbuffer_destroy(&sbuf);
-
-    return 0;
-}
-```
-
-See [`QUICKSTART-C.md`](./QUICKSTART-C.md) for more details.
 
 In C++:
 
@@ -132,7 +89,7 @@ You will need:
  - `gcc >= 4.1.0`
  - `cmake >= 2.8.0`
 
-C and C++03:
+C++03:
 
     $ git clone https://github.com/msgpack/msgpack-c.git
     $ cd msgpack-c
@@ -176,23 +133,3 @@ the binaries:' text box.
 6. Open the created msgpack.sln on Visual Studio.
 
 7. Build all.
-
-### Documentation
-
-You can get additional information including the tutorial on the
-[wiki](https://github.com/msgpack/msgpack-c/wiki).
-
-Contributing
-------------
-
-`msgpack-c` is developed on GitHub at [msgpack/msgpack-c](https://github.com/msgpack/msgpack-c).
-To report an issue or send a pull request, use the
-[issue tracker](https://github.com/msgpack/msgpack-c/issues).
-
-Here's the list of [great contributors](https://github.com/msgpack/msgpack-c/graphs/contributors).
-
-License
--------
-
-`msgpack-c` is licensed under the Boost Software License, Version 1.0. See
-the [`LICENSE_1_0.txt`](./LICENSE_1_0.txt) file for details.
