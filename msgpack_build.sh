@@ -12,7 +12,7 @@ foldername=''
 testresult=0
 msgtips="$(date)  START\n\n"
 
-for ver in '1.72.0'
+for ver in '1.63.0' '1.64.0' '1.65.0' '1.66.0' '1.67.0' '1.68.0' '1.69.0' '1.70.0' '1.71.0' '1.72.0'
 do
     filename="boost_${ver//\./_}.tar.gz"
 	foldername="boost_${ver//\./_}"
