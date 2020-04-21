@@ -40,7 +40,7 @@ foreach ($ver in $versions) {
 
     cd $foldername
     .\bootstrap.bat
-    .\b2 stage architecture=x86 address-model=64 --without-graph --without-graph_parallel --stagedir='d:\install\boost' link=static runtime-link=shared runtime-link=static threading=multi debug release
+    .\b2 stage --toolset=msvc-15.0 architecture=x86 address-model=64 --without-graph --without-graph_parallel --stagedir='d:\install\boost' link=static runtime-link=shared runtime-link=static threading=multi debug release
     
     #delete installed files
     if (test-path $boostInstallPath) {
