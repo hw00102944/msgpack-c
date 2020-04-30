@@ -255,43 +255,9 @@ static void create_objects(void)
 #else
 static void create_objects(void) 
 {
-
+	printf("DO nothing");
 }
 #endif
-
-void unpack(char const* buf, size_t len) {
-    /* buf is allocated by client. */
-    msgpack_unpacked result;
-    size_t off = 0;
-    msgpack_unpack_return ret;
-    int i = 0;
-    char unpacked_buffer[UNPACKED_BUFFER_SIZE];
-    msgpack_unpacked_init(&result);
-    ret = msgpack_unpack_next(&result, buf, len, &off);
-    while (ret == MSGPACK_UNPACK_SUCCESS) {
-        msgpack_object obj = result.data;
-
-        /* Use obj. */
-        printf("Object no %d:\n", ++i);
-        msgpack_object_print(stdout, obj);
-        printf("\n");
-        msgpack_object_print_buffer(unpacked_buffer, UNPACKED_BUFFER_SIZE, obj);
-        printf("%s\n", unpacked_buffer);
-        /* If you want to allocate something on the zone, you can use zone. */
-        /* msgpack_zone* zone = result.zone; */
-        /* The lifetime of the obj and the zone,  */
-
-        ret = msgpack_unpack_next(&result, buf, len, &off);
-    }
-    msgpack_unpacked_destroy(&result);
-
-    if (ret == MSGPACK_UNPACK_CONTINUE) {
-        printf("All msgpack_object in the buffer is consumed.\n");
-    }
-    else if (ret == MSGPACK_UNPACK_PARSE_ERROR) {
-        printf("The data in the buf is invalid format.\n");
-    }
-}
 
 int main(void) {
     create_objects();

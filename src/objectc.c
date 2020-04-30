@@ -61,7 +61,7 @@ static int parse_json(msgpack_packer *pk, cJSON *node)
 		{
 			size_t len = strlen(node->valuestring);
 			msgpack_pack_str(pk, len);
-			msgpack_pack_str_body(pker, node->valuestring, len);
+			msgpack_pack_str_body(pk, node->valuestring, len);
 			return 0;
 		}
 	case cJSON_NULL:
@@ -126,7 +126,7 @@ int msgpack_pack_json(msgpack_packer *pk, const char * const ptr)
 	return status;
 }
 
-static void msgpack_pack_array(cJSON *father, msgpack_object child)
+static void msgpack_pack_json_array(cJSON *father, msgpack_object child)
 {
 	switch(child.type) {
 	case MSGPACK_OBJECT_NIL:
@@ -145,7 +145,7 @@ static void msgpack_pack_array(cJSON *father, msgpack_object child)
 	case MSGPACK_OBJECT_FLOAT64:
 		cJSON_AddItemToArray(father, cJOSN_CreateNumber(child.via.f64));
 		break;
-	case MSGPAKC_OBJECT_STR:
+	case MSGPACK_OBJECT_STR:
 		{
 			char strbuffer[child.via.str.size + 1];
 			snprintf(strbuffer, child.via.str.size + 1, child.via.str.ptr);
@@ -154,35 +154,36 @@ static void msgpack_pack_array(cJSON *father, msgpack_object child)
 		}
 	case MSGPACK_OBJECT_ARRAY:
 		{
-			cJSON cnode = cJSON_CreateArray();
+			cJSON *cnode = cJSON_CreateArray();
 			cJSON_AddItemToArray(father, cnode);
 			if (child.via.array.size > 0) {
 				int i = 0;
 				msgpack_object *p = child.via.array.ptr;
 				for (; i < child.via.array.size; i++) {
-					msgpack_pack_array(cnode, *(p + i));
+					msgpack_pack_json_array(cnode, *(p + i));
 				}
 			}
 			break;
 		}
 	case MSGPACK_OBJECT_MAP:
 		{
-		    cJSON mnode = cJSON_CreateObject();
+		    cJSON *mnode = cJSON_CreateObject();
 		    cJSON_AddItemToObject(father, mnode);
 		    if (child.via.map.size > 0) {
 			    int i = 0;
 			    msgpack_object_kv *p = child.via.map.ptr;
 			    for (; i < child.via.map.size; i++) {
-				    msgpack_pack_map(mnode, *(p + i));
+				    msgpack_pack_json_map(mnode, *(p + i));
 			    }
 		    }
 		    break;
 		}
 	default:
+		break;
 	}
 }
 
-static void msgpack_pack_map(cJSON *father, msgpack_object_kv child)
+static void msgpack_pack_json_map(cJSON *father, msgpack_object_kv child)
 {
 	if (child.key.type != MSGPACK_OBJECT_STR) {
 		return;
@@ -207,7 +208,7 @@ static void msgpack_pack_map(cJSON *father, msgpack_object_kv child)
 	case MSGPACK_OBJECT_FLOAT64:
 		cJSON_AddNumberToObject(father, fbuffer, child.val.via.f64);
 		break;
-	case MSGPAKC_OBJECT_STR:
+	case MSGPACK_OBJECT_STR:
 		{
 			char strbuffer[child.val.via.str.size + 1];
 			snprintf(strbuffer, child.val.via.str.size + 1, child.val.via.str.ptr);
@@ -216,31 +217,32 @@ static void msgpack_pack_map(cJSON *father, msgpack_object_kv child)
 		}
 	case MSGPACK_OBJECT_ARRAY:
 		{
-			cJSON cnode = cJSON_CreateArray();
+			cJSON *cnode = cJSON_CreateArray();
 			cJSON_AddItemToObject(father, cnode);
 			if (child.val.via.array.size > 0) {
 				int i = 0;
 				msgpack_object *p = child.val.via.array.ptr;
 				for (; i < child.val.via.array.size; i++) {
-					msgpack_pack_array(cnode, *(p + i));
+					msgpack_pack_json_array(cnode, *(p + i));
 				}
 			}
 			break;
 		}
 	case MSGPACK_OBJECT_MAP:
 		{
-		    cJSON mnode = cJSON_CreateObject();
+		    cJSON *mnode = cJSON_CreateObject();
 		    cJSON_AddItemToObject(father, mnode);
 		    if (child.val.via.map.size > 0) {
 			    int i = 0;
 			    msgpack_object_kv *p = child.val.via.map.ptr;
 			    for (; i < child.val.via.map.size; i++) {
-				    msgpack_pack_map(mnode, *(p + i));
+				    msgpack_pack_json_map(mnode, *(p + i));
 			    }
 		    }
 		    break;
 		}
 	default:
+		break;
 	}
 }
 int msgpack_object_print_cjson_buffer(char *buffer, size_t length, const msgpack_object o)
@@ -260,7 +262,7 @@ int msgpack_object_print_cjson_buffer(char *buffer, size_t length, const msgpack
 		root = cJSON_CreateNumber(o.via.i64);
 		break;
 	case MSGPACK_OBJECT_FLOAT32:
-	case MSGPACK_OBJECT_FLOAT63:
+	case MSGPACK_OBJECT_FLOAT64:
 		root = cJSON_CreateNumber(o.via.f64);
 		break;
 	case MSGPACK_BOJECT_STR:
@@ -277,7 +279,7 @@ int msgpack_object_print_cjson_buffer(char *buffer, size_t length, const msgpack
 			    int i = 0;
 				msgpack_object *p = o.via.array.ptr;
 			    for (; i < o.via.array.size; i++) {
-				    msgpack_pack_array(root, *(p + i));
+				    msgpack_pack_json_array(root, *(p + i));
 			    }
 		    }
 	    	break;
@@ -289,12 +291,13 @@ int msgpack_object_print_cjson_buffer(char *buffer, size_t length, const msgpack
 				int i = 0;
 				msgpack_object_kv *p = o.via.map.ptr;
 				for (; i < o.via.map.size; i++) {
-					msgpack_pack_map(root, *(p + i));
+					msgpack_pack_json_map(root, *(p + i));
 				}
 			}
 			break;
 		}
 	default:
+		break;
 	}
 
 	if (root) {
