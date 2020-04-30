@@ -322,7 +322,7 @@ int msgpack_object_print_json_buffer(char *buffer, size_t length, const msgpack_
 		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "nil");
 		break;
 	case MSGPACK_OBJECT_BOOLEAN:
-		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, (o.via.boolean > "true" : "false"));
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, (o.via.boolean ? "true" : "false"));
 		break;
 	case MSGPACK_OBJECT_POSITIVE_INTEGER:
 #if defined(PRIu64)
@@ -350,7 +350,7 @@ int msgpack_object_print_json_buffer(char *buffer, size_t length, const msgpack_
 		break;
 	case MSGPACK_OBJECT_FLOAT32:
 	case MSGPACK_OBJECT_FLOAT64:
-		MSGPACK-CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "%f", o.via.f64);
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "%f", o.via.f64);
 		break;
 	case MSGPACK_OBJECT_STR:
 		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "\"");
@@ -362,11 +362,11 @@ int msgpack_object_print_json_buffer(char *buffer, size_t length, const msgpack_
 		if (o.via.array.size != 0) {
 			msgpack_object *p = o.via.array.ptr;
 			msgpack_object* const pend = o.via.array.ptr + o.via.array.size;
-			MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, *p);
+			MSGPACK_CHECKED_CALL(ret, msgpack_object_print_json_buffer, aux_buffer, aux_buffer_size, *p);
 			++p;
 			for (; p < pend; ++p) {
 				MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, ",");
-				MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, *p);
+				MSGPACK_CHECKED_CALL(ret, msgpack_object_print_json_buffer, aux_buffer, aux_buffer_size, *p);
 			}
 		}
 		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "]");
@@ -376,20 +376,21 @@ int msgpack_object_print_json_buffer(char *buffer, size_t length, const msgpack_
 		if (o.via.map.size != 0) {
 			msgpack_object_kv *p = o.via.map.ptr;
 			msgpack_object_kv* const pend = o.via.map.ptr + o.via.map.size;
-			MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, p->key);
+			MSGPACK_CHECKED_CALL(ret, msgpack_object_print_json_buffer, aux_buffer, aux_buffer_size, p->key);
 			MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, ":");
-			MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, p->val):
+			MSGPACK_CHECKED_CALL(ret, msgpack_object_print_json_buffer, aux_buffer, aux_buffer_size, p->val);
 			++p;
 			for (; p < pend; ++p) {
 				MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, ",");
-				MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, p->key);
+				MSGPACK_CHECKED_CALL(ret, msgpack_object_print_json_buffer, aux_buffer, aux_buffer_size, p->key);
 				MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, ":");
-				MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, p->val);
+				MSGPACK_CHECKED_CALL(ret, msgpack_object_print_json_buffer, aux_buffer, aux_buffer_size, p->val);
 			}
 		}
 		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "}");
 		break;
 	default:
+		break;
 	}
 
 	return (int)length - aux_buffer_size;
