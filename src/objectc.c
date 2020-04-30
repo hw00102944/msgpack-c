@@ -243,7 +243,7 @@ static void msgpack_pack_map(cJSON *father, msgpack_object_kv child)
 	default:
 	}
 }
-int msgpack_object_print_json_buffer(char *buffer, size_t length, const msgpack_object o)
+int msgpack_object_print_cjson_buffer(char *buffer, size_t length, const msgpack_object o)
 {
 	cJSON *root = NULL;
 	switch(o.type) {
@@ -310,6 +310,7 @@ int msgpack_pack_json(msgpack_packer *pk, const char * const ptr)
 {
 	return -1;
 }
+#endif /*(HAVE_CJSON)*/
 
 int msgpack_object_print_json_buffer(char *buffer, size_t length, const msgpack_object o)
 {
@@ -395,7 +396,7 @@ int msgpack_object_print_json_buffer(char *buffer, size_t length, const msgpack_
 
 	return (int)length - aux_buffer_size;
 }
-#endif /*(HAVE_CJSON)*/
+
 
 int msgpack_pack_object(msgpack_packer* pk, msgpack_object d)
 {

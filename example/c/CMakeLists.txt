@@ -4,6 +4,7 @@ LIST (APPEND exec_PROGRAMS
     speed_test_uint32_array.c
     speed_test_uint64_array.c
     user_buffer_unpack.c
+    msgpack_to_json.c
 )
 
 FOREACH (source_file ${exec_PROGRAMS})
