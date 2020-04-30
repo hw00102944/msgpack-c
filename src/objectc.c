@@ -126,188 +126,188 @@ int msgpack_pack_json(msgpack_packer *pk, const char * const ptr)
 	return status;
 }
 
-static void msgpack_pack_json_array(cJSON *father, msgpack_object child)
-{
-	switch(child.type) {
-	case MSGPACK_OBJECT_NIL:
-		cJSON_AddItemToArray(father, cJSON_CreateNull());
-		break;
-	case MSGPACK_OBJECT_BOOLEAN:
-		cJSON_AddItemToArray(father, cJSON_CreateBool(child.via.boolean));
-		break;
-	case MSGPACK_OBJECT_POSITIVE_INTEGER:
-		cJSON_AddItemToArray(father, cJSON_CreateNumber(child.via.u64));
-		break;
-	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
-		cJSON_AddItemToArray(father, cJSON_CreateNumber(child.via.i64));
-		break;
-	case MSGPACK_OBJECT_FLOAT32:
-	case MSGPACK_OBJECT_FLOAT64:
-		cJSON_AddItemToArray(father, cJOSN_CreateNumber(child.via.f64));
-		break;
-	case MSGPACK_OBJECT_STR:
-		{
-			char strbuffer[child.via.str.size + 1];
-			snprintf(strbuffer, child.via.str.size + 1, child.via.str.ptr);
-			cJSON_AddItemToArray(father, cJSON_CreateString(strbuffer));
-			break;
-		}
-	case MSGPACK_OBJECT_ARRAY:
-		{
-			cJSON *cnode = cJSON_CreateArray();
-			cJSON_AddItemToArray(father, cnode);
-			if (child.via.array.size > 0) {
-				int i = 0;
-				msgpack_object *p = child.via.array.ptr;
-				for (; i < child.via.array.size; i++) {
-					msgpack_pack_json_array(cnode, *(p + i));
-				}
-			}
-			break;
-		}
-	case MSGPACK_OBJECT_MAP:
-		{
-		    cJSON *mnode = cJSON_CreateObject();
-		    cJSON_AddItemToObject(father, mnode);
-		    if (child.via.map.size > 0) {
-			    int i = 0;
-			    msgpack_object_kv *p = child.via.map.ptr;
-			    for (; i < child.via.map.size; i++) {
-				    msgpack_pack_json_map(mnode, *(p + i));
-			    }
-		    }
-		    break;
-		}
-	default:
-		break;
-	}
-}
+// static void msgpack_pack_json_array(cJSON *father, msgpack_object child)
+// {
+// 	switch(child.type) {
+// 	case MSGPACK_OBJECT_NIL:
+// 		cJSON_AddItemToArray(father, cJSON_CreateNull());
+// 		break;
+// 	case MSGPACK_OBJECT_BOOLEAN:
+// 		cJSON_AddItemToArray(father, cJSON_CreateBool(child.via.boolean));
+// 		break;
+// 	case MSGPACK_OBJECT_POSITIVE_INTEGER:
+// 		cJSON_AddItemToArray(father, cJSON_CreateNumber(child.via.u64));
+// 		break;
+// 	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
+// 		cJSON_AddItemToArray(father, cJSON_CreateNumber(child.via.i64));
+// 		break;
+// 	case MSGPACK_OBJECT_FLOAT32:
+// 	case MSGPACK_OBJECT_FLOAT64:
+// 		cJSON_AddItemToArray(father, cJOSN_CreateNumber(child.via.f64));
+// 		break;
+// 	case MSGPACK_OBJECT_STR:
+// 		{
+// 			char strbuffer[child.via.str.size + 1];
+// 			snprintf(strbuffer, child.via.str.size + 1, child.via.str.ptr);
+// 			cJSON_AddItemToArray(father, cJSON_CreateString(strbuffer));
+// 			break;
+// 		}
+// 	case MSGPACK_OBJECT_ARRAY:
+// 		{
+// 			cJSON *cnode = cJSON_CreateArray();
+// 			cJSON_AddItemToArray(father, cnode);
+// 			if (child.via.array.size > 0) {
+// 				int i = 0;
+// 				msgpack_object *p = child.via.array.ptr;
+// 				for (; i < child.via.array.size; i++) {
+// 					msgpack_pack_json_array(cnode, *(p + i));
+// 				}
+// 			}
+// 			break;
+// 		}
+// 	case MSGPACK_OBJECT_MAP:
+// 		{
+// 		    cJSON *mnode = cJSON_CreateObject();
+// 		    cJSON_AddItemToObject(father, mnode);
+// 		    if (child.via.map.size > 0) {
+// 			    int i = 0;
+// 			    msgpack_object_kv *p = child.via.map.ptr;
+// 			    for (; i < child.via.map.size; i++) {
+// 				    msgpack_pack_json_map(mnode, *(p + i));
+// 			    }
+// 		    }
+// 		    break;
+// 		}
+// 	default:
+// 		break;
+// 	}
+// }
 
-static void msgpack_pack_json_map(cJSON *father, msgpack_object_kv child)
-{
-	if (child.key.type != MSGPACK_OBJECT_STR) {
-		return;
-	}
-	char fbuffer[child.key.via.str.size + 1];
-	snprintf(fbuffer, child.key.via.str.size + 1, child.key.via.str.ptr);
+// static void msgpack_pack_json_map(cJSON *father, msgpack_object_kv child)
+// {
+// 	if (child.key.type != MSGPACK_OBJECT_STR) {
+// 		return;
+// 	}
+// 	char fbuffer[child.key.via.str.size + 1];
+// 	snprintf(fbuffer, child.key.via.str.size + 1, child.key.via.str.ptr);
 
-	switch(child.val.type) {
-	case MSGPACK_OBJECT_NIL:
-		cJSON_AddNullToObject(father, fbuffer);
-		break;
-	case MSGPACK_OBJECT_BOOLEAN:
-		cJSON_AddBoolToObject(father, fbuffer, child.val.via.boolean);
-		break;
-	case MSGPACK_OBJECT_POSITIVE_INTEGER:
-		cJSON_AddNumberToObject(father, fbuffer, child.val.via.u64);
-		break;
-	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
-		cJSON_AddNumberToObject(father, fbuffer, child.val.via.i64);
-		break;
-	case MSGPACK_OBJECT_FLOAT32:
-	case MSGPACK_OBJECT_FLOAT64:
-		cJSON_AddNumberToObject(father, fbuffer, child.val.via.f64);
-		break;
-	case MSGPACK_OBJECT_STR:
-		{
-			char strbuffer[child.val.via.str.size + 1];
-			snprintf(strbuffer, child.val.via.str.size + 1, child.val.via.str.ptr);
-			cJSON_AddStringToObject(father, fbuffer, strbuffer);
-			break;
-		}
-	case MSGPACK_OBJECT_ARRAY:
-		{
-			cJSON *cnode = cJSON_CreateArray();
-			cJSON_AddItemToObject(father, cnode);
-			if (child.val.via.array.size > 0) {
-				int i = 0;
-				msgpack_object *p = child.val.via.array.ptr;
-				for (; i < child.val.via.array.size; i++) {
-					msgpack_pack_json_array(cnode, *(p + i));
-				}
-			}
-			break;
-		}
-	case MSGPACK_OBJECT_MAP:
-		{
-		    cJSON *mnode = cJSON_CreateObject();
-		    cJSON_AddItemToObject(father, mnode);
-		    if (child.val.via.map.size > 0) {
-			    int i = 0;
-			    msgpack_object_kv *p = child.val.via.map.ptr;
-			    for (; i < child.val.via.map.size; i++) {
-				    msgpack_pack_json_map(mnode, *(p + i));
-			    }
-		    }
-		    break;
-		}
-	default:
-		break;
-	}
-}
-int msgpack_object_print_cjson_buffer(char *buffer, size_t length, const msgpack_object o)
-{
-	cJSON *root = NULL;
-	switch(o.type) {
-	case MSGPACK_OBJECT_NIL:
-		root = cJSON_CreateNull();
-		break;
-	case MSGPACK_OBJECT_BOOLEAN:
-		root = cJSON_CreateBool(o.via.boolean);
-		break;
-	case MSGPACK_OBJECT_POSITIVE_INTEGER:
-		root = cJSON_CreateNumber(o.via.u64);
-		break;
-	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
-		root = cJSON_CreateNumber(o.via.i64);
-		break;
-	case MSGPACK_OBJECT_FLOAT32:
-	case MSGPACK_OBJECT_FLOAT64:
-		root = cJSON_CreateNumber(o.via.f64);
-		break;
-	case MSGPACK_BOJECT_STR:
-		{
-		    char strbuffer[o.via.str.size + 1];
-		    snprintf(strbuffer, o.via.str.size + 1, o.via.str.ptr);
-		    root = cJSON_CreateString(strbuffer);
-		    break;
-		}
-	case MSGPACK_OBJECT_ARRAY:
-		{
-		    root = cJSON_CreateArray();
-		    if (o.via.array.size > 0) {
-			    int i = 0;
-				msgpack_object *p = o.via.array.ptr;
-			    for (; i < o.via.array.size; i++) {
-				    msgpack_pack_json_array(root, *(p + i));
-			    }
-		    }
-	    	break;
-		}
-	case MSGPACK_OBJECT_MAP:
-		{
-			root = cJSON_CreateObject();
-			if (o.via.map.size > 0) {
-				int i = 0;
-				msgpack_object_kv *p = o.via.map.ptr;
-				for (; i < o.via.map.size; i++) {
-					msgpack_pack_json_map(root, *(p + i));
-				}
-			}
-			break;
-		}
-	default:
-		break;
-	}
+// 	switch(child.val.type) {
+// 	case MSGPACK_OBJECT_NIL:
+// 		cJSON_AddNullToObject(father, fbuffer);
+// 		break;
+// 	case MSGPACK_OBJECT_BOOLEAN:
+// 		cJSON_AddBoolToObject(father, fbuffer, child.val.via.boolean);
+// 		break;
+// 	case MSGPACK_OBJECT_POSITIVE_INTEGER:
+// 		cJSON_AddNumberToObject(father, fbuffer, child.val.via.u64);
+// 		break;
+// 	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
+// 		cJSON_AddNumberToObject(father, fbuffer, child.val.via.i64);
+// 		break;
+// 	case MSGPACK_OBJECT_FLOAT32:
+// 	case MSGPACK_OBJECT_FLOAT64:
+// 		cJSON_AddNumberToObject(father, fbuffer, child.val.via.f64);
+// 		break;
+// 	case MSGPACK_OBJECT_STR:
+// 		{
+// 			char strbuffer[child.val.via.str.size + 1];
+// 			snprintf(strbuffer, child.val.via.str.size + 1, child.val.via.str.ptr);
+// 			cJSON_AddStringToObject(father, fbuffer, strbuffer);
+// 			break;
+// 		}
+// 	case MSGPACK_OBJECT_ARRAY:
+// 		{
+// 			cJSON *cnode = cJSON_CreateArray();
+// 			cJSON_AddItemToObject(father, cnode);
+// 			if (child.val.via.array.size > 0) {
+// 				int i = 0;
+// 				msgpack_object *p = child.val.via.array.ptr;
+// 				for (; i < child.val.via.array.size; i++) {
+// 					msgpack_pack_json_array(cnode, *(p + i));
+// 				}
+// 			}
+// 			break;
+// 		}
+// 	case MSGPACK_OBJECT_MAP:
+// 		{
+// 		    cJSON *mnode = cJSON_CreateObject();
+// 		    cJSON_AddItemToObject(father, mnode);
+// 		    if (child.val.via.map.size > 0) {
+// 			    int i = 0;
+// 			    msgpack_object_kv *p = child.val.via.map.ptr;
+// 			    for (; i < child.val.via.map.size; i++) {
+// 				    msgpack_pack_json_map(mnode, *(p + i));
+// 			    }
+// 		    }
+// 		    break;
+// 		}
+// 	default:
+// 		break;
+// 	}
+// }
+// int msgpack_object_print_cjson_buffer(char *buffer, size_t length, const msgpack_object o)
+// {
+// 	cJSON *root = NULL;
+// 	switch(o.type) {
+// 	case MSGPACK_OBJECT_NIL:
+// 		root = cJSON_CreateNull();
+// 		break;
+// 	case MSGPACK_OBJECT_BOOLEAN:
+// 		root = cJSON_CreateBool(o.via.boolean);
+// 		break;
+// 	case MSGPACK_OBJECT_POSITIVE_INTEGER:
+// 		root = cJSON_CreateNumber(o.via.u64);
+// 		break;
+// 	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
+// 		root = cJSON_CreateNumber(o.via.i64);
+// 		break;
+// 	case MSGPACK_OBJECT_FLOAT32:
+// 	case MSGPACK_OBJECT_FLOAT64:
+// 		root = cJSON_CreateNumber(o.via.f64);
+// 		break;
+// 	case MSGPACK_BOJECT_STR:
+// 		{
+// 		    char strbuffer[o.via.str.size + 1];
+// 		    snprintf(strbuffer, o.via.str.size + 1, o.via.str.ptr);
+// 		    root = cJSON_CreateString(strbuffer);
+// 		    break;
+// 		}
+// 	case MSGPACK_OBJECT_ARRAY:
+// 		{
+// 		    root = cJSON_CreateArray();
+// 		    if (o.via.array.size > 0) {
+// 			    int i = 0;
+// 				msgpack_object *p = o.via.array.ptr;
+// 			    for (; i < o.via.array.size; i++) {
+// 				    msgpack_pack_json_array(root, *(p + i));
+// 			    }
+// 		    }
+// 	    	break;
+// 		}
+// 	case MSGPACK_OBJECT_MAP:
+// 		{
+// 			root = cJSON_CreateObject();
+// 			if (o.via.map.size > 0) {
+// 				int i = 0;
+// 				msgpack_object_kv *p = o.via.map.ptr;
+// 				for (; i < o.via.map.size; i++) {
+// 					msgpack_pack_json_map(root, *(p + i));
+// 				}
+// 			}
+// 			break;
+// 		}
+// 	default:
+// 		break;
+// 	}
 
-	if (root) {
-		cJSON_PrintPreallocated(root, buffer, (int)length, 0);
-		cJSON_Delete(root);
-		return length - strlen(buffer);
-	}
+// 	if (root) {
+// 		cJSON_PrintPreallocated(root, buffer, (int)length, 0);
+// 		cJSON_Delete(root);
+// 		return length - strlen(buffer);
+// 	}
 
-	return length;
-}
+// 	return length;
+// }
 #else /*!HAVE_CJSON */
 int msgpack_pack_json(msgpack_packer *pk, const char * const ptr)
 {
