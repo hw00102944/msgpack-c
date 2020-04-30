@@ -18,6 +18,10 @@
 
 #include <stdio.h>
 #include <string.h>
+#if defined(HAVE_CJSON)
+#include <math.h>
+#include <cjson/cJSON.h>
+#endif
 
 #if defined(_MSC_VER)
 #if _MSC_VER >= 1800
@@ -35,6 +39,362 @@
 #  undef  snprintf
 #  define snprintf _snprintf
 #endif
+
+#define MSGPACK_CHECKED_CALL(ret, func, aux_buffer, aux_buffer_size, ...) \
+	ret = func(aux_buffer, aux_buffer_size, __VA_ARGS__);                 \
+	if (ret < 0 || ret > (int)aux_buffer_size) return 0;                  \
+	aux_buffer = aux_buffer + ret;                                        \
+	aux_buffer_size = aux_buffer_size - ret                               \
+
+#if defined(HAVE_CJSON)
+static int parse_json(msgpack_packer *pk, cJSON *node)
+{
+	switch(node->type & 0xFF) {
+	case cJSON_False:
+		msgpack_pack_false(pk);
+		return 0;
+	case cJSON_True:
+		msgpack_pack_true(pk);
+		return 0;
+	case cJSON_String:
+	case cJSON_Raw:
+		{
+			size_t len = strlen(node->valuestring);
+			msgpack_pack_str(pk, len);
+			msgpack_pack_str_body(pker, node->valuestring, len);
+			return 0;
+		}
+	case cJSON_NULL:
+		msgpack_pack_nil(pk);
+		return 0;
+	case cJSON_Number:
+		if (isnan(node->valuedouble) || isinf(node->valuedouble)) {
+			msgpack_pack_nil(pk);
+			return 0;
+		}
+
+		if (fabs(0.0) < fabs(node->valuedouble - node->valueint)) {
+			msgpack_pack_double(pk, node->valuedouble);
+		}else {
+			msgpack_pack_int(pk, node->valueint);
+		}
+		return 0;
+	case cJSON_Array:
+		{
+			int sz, i;
+			sz = cJSON_GetArraySize(node);
+			msgpack_pack_array(pk, sz);
+			for (i = 0; i < sz; i++) {
+				if (parse_json(pk, cJSON_GetArrayItem(node, i)) < 0) {
+					return -1;
+				}
+			}
+			return 0;
+		}
+	case cJSON_Object:
+		{
+			int sz, i;
+			size_t len;
+			cJSON *child;
+			sz = cJSON_GetArraySize(node);
+			msgpack_pack_map(pk, sz);
+			for (i = 0; i < sz; i++) {
+				child = cJSON_GetArrayItem(node, i);
+				len = strlen(child->string);
+				msgpack_pack_str(pk, len);
+				msgpack_pack_str_body(pk, child->string, len);
+				if (parse_json(pk, child) < 0 ) {
+					return -1;
+				}
+			}
+			return 0;
+		}
+	default:
+		return -1;
+	}
+}
+
+int msgpack_pack_json(msgpack_packer *pk, const char * const ptr)
+{
+	int status = -1;
+	if (NULL == pk || NULL == ptr) { return status; }
+	cJSON *node = NULL;
+	node = cJSON_Parse(ptr);
+	if (NULL == node) { return status; }
+	status = parse_json(pk, node);
+	cJSON_Delete(node);
+	return status;
+}
+
+static void msgpack_pack_array(cJSON *father, msgpack_object child)
+{
+	switch(child.type) {
+	case MSGPACK_OBJECT_NIL:
+		cJSON_AddItemToArray(father, cJSON_CreateNull());
+		break;
+	case MSGPACK_OBJECT_BOOLEAN:
+		cJSON_AddItemToArray(father, cJSON_CreateBool(child.via.boolean));
+		break;
+	case MSGPACK_OBJECT_POSITIVE_INTEGER:
+		cJSON_AddItemToArray(father, cJSON_CreateNumber(child.via.u64));
+		break;
+	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
+		cJSON_AddItemToArray(father, cJSON_CreateNumber(child.via.i64));
+		break;
+	case MSGPACK_OBJECT_FLOAT32:
+	case MSGPACK_OBJECT_FLOAT64:
+		cJSON_AddItemToArray(father, cJOSN_CreateNumber(child.via.f64));
+		break;
+	case MSGPAKC_OBJECT_STR:
+		{
+			char strbuffer[child.via.str.size + 1];
+			snprintf(strbuffer, child.via.str.size + 1, child.via.str.ptr);
+			cJSON_AddItemToArray(father, cJSON_CreateString(strbuffer));
+			break;
+		}
+	case MSGPACK_OBJECT_ARRAY:
+		{
+			cJSON cnode = cJSON_CreateArray();
+			cJSON_AddItemToArray(father, cnode);
+			if (child.via.array.size > 0) {
+				int i = 0;
+				msgpack_object *p = child.via.array.ptr;
+				for (; i < child.via.array.size; i++) {
+					msgpack_pack_array(cnode, *(p + i));
+				}
+			}
+			break;
+		}
+	case MSGPACK_OBJECT_MAP:
+		{
+		    cJSON mnode = cJSON_CreateObject();
+		    cJSON_AddItemToObject(father, mnode);
+		    if (child.via.map.size > 0) {
+			    int i = 0;
+			    msgpack_object_kv *p = child.via.map.ptr;
+			    for (; i < child.via.map.size; i++) {
+				    msgpack_pack_map(mnode, *(p + i));
+			    }
+		    }
+		    break;
+		}
+	default:
+	}
+}
+
+static void msgpack_pack_map(cJSON *father, msgpack_object_kv child)
+{
+	if (child.key.type != MSGPACK_OBJECT_STR) {
+		return;
+	}
+	char fbuffer[child.key.via.str.size + 1];
+	snprintf(fbuffer, child.key.via.str.size + 1, child.key.via.str.ptr);
+
+	switch(child.val.type) {
+	case MSGPACK_OBJECT_NIL:
+		cJSON_AddNullToObject(father, fbuffer);
+		break;
+	case MSGPACK_OBJECT_BOOLEAN:
+		cJSON_AddBoolToObject(father, fbuffer, child.val.via.boolean);
+		break;
+	case MSGPACK_OBJECT_POSITIVE_INTEGER:
+		cJSON_AddNumberToObject(father, fbuffer, child.val.via.u64);
+		break;
+	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
+		cJSON_AddNumberToObject(father, fbuffer, child.val.via.i64);
+		break;
+	case MSGPACK_OBJECT_FLOAT32:
+	case MSGPACK_OBJECT_FLOAT64:
+		cJSON_AddNumberToObject(father, fbuffer, child.val.via.f64);
+		break;
+	case MSGPAKC_OBJECT_STR:
+		{
+			char strbuffer[child.val.via.str.size + 1];
+			snprintf(strbuffer, child.val.via.str.size + 1, child.val.via.str.ptr);
+			cJSON_AddStringToObject(father, fbuffer, strbuffer);
+			break;
+		}
+	case MSGPACK_OBJECT_ARRAY:
+		{
+			cJSON cnode = cJSON_CreateArray();
+			cJSON_AddItemToObject(father, cnode);
+			if (child.val.via.array.size > 0) {
+				int i = 0;
+				msgpack_object *p = child.val.via.array.ptr;
+				for (; i < child.val.via.array.size; i++) {
+					msgpack_pack_array(cnode, *(p + i));
+				}
+			}
+			break;
+		}
+	case MSGPACK_OBJECT_MAP:
+		{
+		    cJSON mnode = cJSON_CreateObject();
+		    cJSON_AddItemToObject(father, mnode);
+		    if (child.val.via.map.size > 0) {
+			    int i = 0;
+			    msgpack_object_kv *p = child.val.via.map.ptr;
+			    for (; i < child.val.via.map.size; i++) {
+				    msgpack_pack_map(mnode, *(p + i));
+			    }
+		    }
+		    break;
+		}
+	default:
+	}
+}
+int msgpack_object_print_json_buffer(char *buffer, size_t length, const msgpack_object o)
+{
+	cJSON *root = NULL;
+	switch(o.type) {
+	case MSGPACK_OBJECT_NIL:
+		root = cJSON_CreateNull();
+		break;
+	case MSGPACK_OBJECT_BOOLEAN:
+		root = cJSON_CreateBool(o.via.boolean);
+		break;
+	case MSGPACK_OBJECT_POSITIVE_INTEGER:
+		root = cJSON_CreateNumber(o.via.u64);
+		break;
+	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
+		root = cJSON_CreateNumber(o.via.i64);
+		break;
+	case MSGPACK_OBJECT_FLOAT32:
+	case MSGPACK_OBJECT_FLOAT63:
+		root = cJSON_CreateNumber(o.via.f64);
+		break;
+	case MSGPACK_BOJECT_STR:
+		{
+		    char strbuffer[o.via.str.size + 1];
+		    snprintf(strbuffer, o.via.str.size + 1, o.via.str.ptr);
+		    root = cJSON_CreateString(strbuffer);
+		    break;
+		}
+	case MSGPACK_OBJECT_ARRAY:
+		{
+		    root = cJSON_CreateArray();
+		    if (o.via.array.size > 0) {
+			    int i = 0;
+				msgpack_object *p = o.via.array.ptr;
+			    for (; i < o.via.array.size; i++) {
+				    msgpack_pack_array(root, *(p + i));
+			    }
+		    }
+	    	break;
+		}
+	case MSGPACK_OBJECT_MAP:
+		{
+			root = cJSON_CreateObject();
+			if (o.via.map.size > 0) {
+				int i = 0;
+				msgpack_object_kv *p = o.via.map.ptr;
+				for (; i < o.via.map.size; i++) {
+					msgpack_pack_map(root, *(p + i));
+				}
+			}
+			break;
+		}
+	default:
+	}
+
+	if (root) {
+		cJSON_PrintPreallocated(root, buffer, (int)length, 0);
+		cJSON_Delete(root);
+		return length - strlen(buffer);
+	}
+
+	return length;
+}
+#else /*!HAVE_CJSON */
+int msgpack_pack_json(msgpack_packer *pk, const char * const ptr)
+{
+	return -1;
+}
+
+int msgpack_object_print_json_buffer(char *buffer, size_t length, const msgpack_object o)
+{
+	char *aux_buffer = buffer;
+	size_t aux_buffer_size = length;
+	int ret;
+
+	switch(o.type) {
+	case MSGPACK_OBJECT_NIL:
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "nil");
+		break;
+	case MSGPACK_OBJECT_BOOLEAN:
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, (o.via.boolean > "true" : "false"));
+		break;
+	case MSGPACK_OBJECT_POSITIVE_INTEGER:
+#if defined(PRIu64)
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "%" PRIu64, o.via.u64);
+#else
+		if (o.via.u64 > ULONG_MAX) {
+			MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "%lu", ULONG_MAX);
+		}else {
+			MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "%lu", (unsigned long)o.via.u64);
+		}
+#endif
+		break;
+	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
+#if defined(PRIi64)
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "%" PRIi64, o.via.i64);
+#else
+		if (o.via.i64 > LONG_MAX) {
+			MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "%ld", LONG_MAX);
+		} else if (o.via.i64 < LONG_MIN) {
+			MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "%ld", LONG_MIN);
+		} else {
+			MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "%ld", (signed long)o.via.i64);
+		}
+#endif
+		break;
+	case MSGPACK_OBJECT_FLOAT32:
+	case MSGPACK_OBJECT_FLOAT64:
+		MSGPACK-CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "%f", o.via.f64);
+		break;
+	case MSGPACK_OBJECT_STR:
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "\"");
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "%.*s", (int)o.via.str.size, o.via.str.ptr);
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "\"");
+		break;
+	case MSGPACK_OBJECT_ARRAY:
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "[");
+		if (o.via.array.size != 0) {
+			msgpack_object *p = o.via.array.ptr;
+			msgpack_object* const pend = o.via.array.ptr + o.via.array.size;
+			MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, *p);
+			++p;
+			for (; p < pend; ++p) {
+				MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, ",");
+				MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, *p);
+			}
+		}
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "]");
+		break;
+	case MSGPACK_OBJECT_MAP:
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "{");
+		if (o.via.map.size != 0) {
+			msgpack_object_kv *p = o.via.map.ptr;
+			msgpack_object_kv* const pend = o.via.map.ptr + o.via.map.size;
+			MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, p->key);
+			MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, ":");
+			MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, p->val):
+			++p;
+			for (; p < pend; ++p) {
+				MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, ",");
+				MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, p->key);
+				MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, ":");
+				MSGPACK_CHECKED_CALL(ret, msgpack_pack_json_buffer, aux_buffer, aux_buffer_size, p->val);
+			}
+		}
+		MSGPACK_CHECKED_CALL(ret, snprintf, aux_buffer, aux_buffer_size, "}");
+		break;
+	default:
+	}
+
+	return (int)length - aux_buffer_size;
+}
+#endif /*(HAVE_CJSON)*/
 
 int msgpack_pack_object(msgpack_packer* pk, msgpack_object d)
 {
@@ -253,12 +613,6 @@ void msgpack_object_print(FILE* out, msgpack_object o)
 }
 
 #endif
-
-#define MSGPACK_CHECKED_CALL(ret, func, aux_buffer, aux_buffer_size, ...) \
-    ret = func(aux_buffer, aux_buffer_size, __VA_ARGS__);                 \
-    if (ret <= 0 || ret >= (int)aux_buffer_size) return 0;                \
-    aux_buffer = aux_buffer + ret;                                        \
-    aux_buffer_size = aux_buffer_size - ret                               \
 
 static int msgpack_object_bin_print_buffer(char *buffer, size_t buffer_size, const char *ptr, size_t size)
 {

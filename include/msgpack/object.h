@@ -108,6 +108,9 @@ int msgpack_object_print_buffer(char *buffer, size_t buffer_size, msgpack_object
 MSGPACK_DLLEXPORT
 bool msgpack_object_equal(const msgpack_object x, const msgpack_object y);
 
+MSGPACK_DLLEXPORT
+char* msgpack_object_print_json_buffer(char *buffer, size_t length, const msgpack_object o);
+
 /** @} */
 
 

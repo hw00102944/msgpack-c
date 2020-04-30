@@ -104,6 +104,8 @@ static int msgpack_pack_timestamp(msgpack_packer* pk, const msgpack_timestamp* d
 MSGPACK_DLLEXPORT
 int msgpack_pack_object(msgpack_packer* pk, msgpack_object d);
 
+MSGPACK_DLLEXPORT
+int msgpack_pack_json(msgpack_packer *pk, const char * const ptr);
 
 /** @} */
 
