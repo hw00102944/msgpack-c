@@ -1,11 +1,15 @@
+FIND_PACKAGE (cJSON)
 LIST (APPEND exec_PROGRAMS
     lib_buffer_unpack.c
     simple_c.c
     speed_test_uint32_array.c
     speed_test_uint64_array.c
     user_buffer_unpack.c
-    jsonconv.c
 )
+
+IF (cJSON_FOUND)
+    LIST (APPEND exec_PROGRAMS jsonconv.c)
+ENDIF ()
 
 FOREACH (source_file ${exec_PROGRAMS})
     GET_FILENAME_COMPONENT (source_file_we ${source_file} NAME_WE)
