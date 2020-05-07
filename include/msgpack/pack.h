@@ -145,26 +145,6 @@ inline void msgpack_packer_free(msgpack_packer* pk)
     free(pk);
 }
 
-inline int msgpack_pack_str_intact(msgpack_packer* pk, const void* b, size_t l)
- {
-     int ret = msgpack_pack_str(pk, l);
-     if (ret != 0) { return ret; }
-     return msgpack_pack_str_body(pk, b, l);
- }
-
- inline int msgpack_pack_bin_intact(msgpack_packer* pk, const void* b, size_t l)
- {
-     int ret = msgpack_pack_bin(pk, l);
-     if (ret != 0) { return ret; }
-     return msgpack_pack_bin_body(pk, b, l);
- }
-
- inline int msgpack_pack_ext_intact(msgpack_packer* pk, const void* b, size_t l, int8_t type)
- {
-     int ret = msgpack_pack_ext(pk, l, type);
-     if (ret != 0) { return ret; }
-     return msgpack_pack_ext_body(pk, b, l);
- }
 
 #ifdef __cplusplus
 }
