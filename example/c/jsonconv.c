@@ -425,9 +425,7 @@ static void do_test(const char *test_name)
     /* allocate file paths */
 #define TEST_DIR_PATH "inputs/"
     test_path = (char*)malloc(sizeof(TEST_DIR_PATH) + test_name_length);
-    TEST_ASSERT_NOT_NULL_MESSAGE(test_path, "Failed to allocate test_path buffer.");
     expected_path = (char*)malloc(sizeof(TEST_DIR_PATH) + test_name_length + sizeof(".expected"));
-    TEST_ASSERT_NOT_NULL_MESSAGE(expected_path, "Failed to allocate expected_path buffer.");
 
     /* create file paths */
     sprintf(test_path, TEST_DIR_PATH"%s", test_name);
@@ -488,7 +486,7 @@ void testArray()
     do_test("test2");
 }
 
-void testMultidimensionalArrays3()
+void testMultidimensionalArrays()
 {
    do_test("test3");
 }

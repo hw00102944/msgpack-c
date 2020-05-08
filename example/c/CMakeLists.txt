@@ -41,3 +41,8 @@ IF (CJSON_FOUND)
     TARGET_LINK_LIBRARIES (jsonconv ${CJSON_LIBRARYS})
     TARGET_INCLUDE_DIRECTORIES(jsonconv PRIVATE ${CJSON_INCLUDE_DIR})
 ENDIF ()
+
+#copy test files
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/inputs")
+    file(GLOB test_files "inputs/*")
+    file(COPY ${test_files} DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/inputs/")
