@@ -349,7 +349,7 @@ static void test(const char *inputStr, const char *expectedStr, const char *test
         msgpack_unpack(sbuf.data, sbuf.size, NULL, &mempool, &obj);
         jsonstrlen = msgpack_object_print_jsonstr(jsonparsed, jsonstrlen, obj);
 
-		printf("-- input--: %s\n",inputStr);
+		printf("--expect--: %s\n",expectedStr);
 		printf("--output--: %s\n",jsonparsed);
         //compare input and output
         //EXPECT_STREQ
@@ -508,7 +508,7 @@ void testSimpleString()
     test(str, "false", "test_boolean");
 
     str = "22.33";
-    test(str, "22.3300000", "test_number");
+    test(str, "22.330000", "test_number");
 }
 
 int main(void)
