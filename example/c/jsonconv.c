@@ -271,7 +271,63 @@ int msgpack_object_print_jsonstr(char *buffer, size_t length, const msgpack_obje
     return (int)length - aux_buffer_size;
 }
 
-void test(const char *str, const char *msgType)
+////////Test Code
+char* read_file(const char *filename) {
+    FILE *file = NULL;
+    long length = 0;
+    char *content = NULL;
+    size_t read_chars = 0;
+
+    /* open in read binary mode */
+    file = fopen(filename, "rb");
+    if (file == NULL)
+    {
+        goto cleanup;
+    }
+
+    /* get the length */
+    if (fseek(file, 0, SEEK_END) != 0)
+    {
+        goto cleanup;
+    }
+    length = ftell(file);
+    if (length < 0)
+    {
+        goto cleanup;
+    }
+    if (fseek(file, 0, SEEK_SET) != 0)
+    {
+        goto cleanup;
+    }
+
+    /* allocate content buffer */
+    content = (char*)malloc((size_t)length + sizeof(""));
+    if (content == NULL)
+    {
+        goto cleanup;
+    }
+
+    /* read the file into memory */
+    read_chars = fread(content, sizeof(char), (size_t)length, file);
+    if ((long)read_chars != length)
+    {
+        free(content);
+        content = NULL;
+        goto cleanup;
+    }
+    content[read_chars] = '\0';
+
+
+cleanup:
+    if (file != NULL)
+    {
+        fclose(file);
+    }
+
+    return content;
+}
+
+static void test(const char *inputStr, const char *expectedStr, const char *testName)
 {
     msgpack_sbuffer sbuf;
     {
@@ -279,28 +335,28 @@ void test(const char *str, const char *msgType)
         msgpack_packer pk;
         msgpack_sbuffer_init(&sbuf);
         msgpack_packer_init(&pk, &sbuf, msgpack_sbuffer_write);
-        msgpack_pack_jsonstr(&pk, str);
+        msgpack_pack_jsonstr(&pk, inputStr);
     }
 
     {
         // unpack data
         msgpack_zone mempool;
         msgpack_object obj;
-        int jsonstrlen = (int)strlen(str) + 20;
+        int jsonstrlen = (int)strlen(inputStr) + 20;
         char jsonparsed[jsonstrlen];
         
         msgpack_zone_init(&mempool, jsonstrlen);
         msgpack_unpack(sbuf.data, sbuf.size, NULL, &mempool, &obj);
         jsonstrlen = msgpack_object_print_jsonstr(jsonparsed, jsonstrlen, obj);
 
-		printf("-- input--: %s\n",str);
+		printf("-- input--: %s\n",inputStr);
 		printf("--output--: %s\n",jsonparsed);
         //compare input and output
         //EXPECT_STREQ
-        if (strcmp(str, jsonparsed) == 0) {
-            printf("%s success.\n", msgType);
+        if (strcmp(expectedStr, jsonparsed) == 0) {
+            printf("%s success.\n", testName);
         }else {
-            printf("%s failed.\n", msgType);
+            printf("%s failed.\n", testName);
         }
 
         msgpack_zone_destroy(&mempool);
@@ -352,43 +408,109 @@ void test1(const char *strObj, const char *msgType)
 
     msgpack_sbuffer_destroy(&sbuf);
 }
+
+static void do_test(const char *test_name)
+{
+    char *expected = NULL;
+    char *actual = NULL;
+
+    size_t test_name_length = 0;
+    /* path of the test input */
+    char *test_path = NULL;
+    /* path of the expected output */
+    char *expected_path = NULL;
+
+    test_name_length = strlen(test_name);
+
+    /* allocate file paths */
+#define TEST_DIR_PATH "inputs/"
+    test_path = (char*)malloc(sizeof(TEST_DIR_PATH) + test_name_length);
+    TEST_ASSERT_NOT_NULL_MESSAGE(test_path, "Failed to allocate test_path buffer.");
+    expected_path = (char*)malloc(sizeof(TEST_DIR_PATH) + test_name_length + sizeof(".expected"));
+    TEST_ASSERT_NOT_NULL_MESSAGE(expected_path, "Failed to allocate expected_path buffer.");
+
+    /* create file paths */
+    sprintf(test_path, TEST_DIR_PATH"%s", test_name);
+    sprintf(expected_path, TEST_DIR_PATH"%s.expected", test_name);
+
+    /* read expected output */
+    expected = read_file(expected_path);
+    if (expected == NULL || strlen(expected) == 0) {
+        goto expectedHandle;
+    }
+    /* print the parsed tree */
+    actual = read_file(test_path);
+    if (actual == NULL || strlen(actual) == 0) {
+        goto actualHandle;
+    }
+
+    test(actual, expected, test_name);
+
+cleanup:
+    /* cleanup resources */
+    if (expected != NULL)
+    {
+        free(expected);
+    }
+    if (actual != NULL)
+    {
+        free(actual);
+    }
+    if (test_path != NULL)
+    {
+        free(test_path);
+    }
+    if (expected_path != NULL)
+    {
+        free(expected_path);
+    }
+
+    return;
+
+expectedHandle:
+    printf("Read Expected File Failed: %s\n", test_name);
+    goto cleanup;
+
+actualHandle:
+    printf("Read Test File Failed: %s\n", test_name);
+    goto cleanup;
+}
+
+
+
 void testObject()
 {
-    char *strObj = "{\"name\":\"Tom (\\\"Bee\\\") Kobe\",\"type\":\"image\",\"data\":{\"width\":360,\"height\":460,\"title\":\"View me\",\"ips\":[116,943,256,711]}}";
-    test(strObj, "Object parse");
+    do_test("test1");
 }
 
 void testArray()
 {
-    char *arr = "[\"Sunday\",\"Monday\",\"Tuesday\",\"Wednesday\",\"Thursday\",\"Friday\",\"Saturday\"]";
-    test(arr, "Array parse");
+    do_test("test2");
 }
 
-void testMultidimensionalArrays()
+void testMultidimensionalArrays3()
 {
-   char *marr = "[[101,121,-33],[119,911,171],[0,0.2,3.0]]";
-   test(marr, "Multidimensional Arrays parse");
+   do_test("test3");
 }
 
 void testObjectsArray()
 {
-    char *objArr = "[{\"name\": \"Tom\",\"city\":\"London\",\"country\":\"UK\",\"longitude\":23.25},{\"name\": \"Jack\",\"city\":\"Birmingham\",\"country\":\"UK\",\"longitude\":-2.2}]";
-    test(objArr, "tObjects Array parse");
+    do_test("test4");
 }
 
 void testSimpleString()
 {
     char *str = "\"My name is Tom (\\\"Bee\\\") Kobe\"";
-    test(str, "Simple String parse");
+    test(str, "My name is Tom (\"Bee\") Kobe", "test_string");
 
     str = "null";
-    test(str, "null String parse");
+    test(str, "null", "test_null");
 
     str = "false";
-    test(str, "Boolean parse");
+    test(str, "false", "test_boolean");
 
     str = "22.33";
-    test(str, "Number parse");
+    test(str, "22.3300000", "test_number");
 }
 
 int main(void)
@@ -398,7 +520,6 @@ int main(void)
     testMultidimensionalArrays();
     testObjectsArray();
     testSimpleString();
-
     return 0;
 }
 
