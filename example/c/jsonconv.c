@@ -293,6 +293,8 @@ void test(const char *str, const char *msgType)
         msgpack_unpack(sbuf.data, sbuf.size, NULL, &mempool, &obj);
         jsonstrlen = msgpack_object_print_jsonstr(jsonparsed, jsonstrlen, obj);
 
+		printf("-- input--: %s\n",str);
+		printf("--output--: %s\n",jsonparsed);
         //compare input and output
         //EXPECT_STREQ
         if (strcmp(str, jsonparsed) == 0) {
@@ -333,6 +335,8 @@ void test1(const char *strObj, const char *msgType)
 
             /* Use obj. */
             msgpack_object_print_jsonstr(unpacked_buffer,  (int)strlen(strObj), obj);
+			printf("-- input--: %s\n", strObj);
+			printf("--output--: %s\n", unpacked_buffer);
             //compare input and output
             //EXPECT_STREQ
             if (strcmp(strObj, unpacked_buffer) == 0) {
@@ -350,7 +354,7 @@ void test1(const char *strObj, const char *msgType)
 }
 void testObject()
 {
-    char *strObj = "{\"name\":\"Tom (\"Bee\") Kobe\",\"type\":\"image\",\"data\":{\"width\":360,\"height\":460,\"title\":\"View me\",\"ips\":[116,943,256,711]}}";
+    char *strObj = "{\"name\":\"Tom (\\\"Bee\\\") Kobe\",\"type\":\"image\",\"data\":{\"width\":360,\"height\":460,\"title\":\"View me\",\"ips\":[116,943,256,711]}}";
     test(strObj, "Object parse");
 }
 
@@ -369,12 +373,12 @@ void testMultidimensionalArrays()
 void testObjectsArray()
 {
     char *objArr = "[{\"name\": \"Tom\",\"city\":\"London\",\"country\":\"UK\",\"longitude\":23.25},{\"name\": \"Jack\",\"city\":\"Birmingham\",\"country\":\"UK\",\"longitude\":-2.2}]";
-    test1(objArr, "tObjects Array parse");
+    test(objArr, "tObjects Array parse");
 }
 
 void testSimpleString()
 {
-    char *str = "My name is Tom (\"Bee\") Kobe";
+    char *str = "\"My name is Tom (\\\"Bee\\\") Kobe\"";
     test(str, "Simple String parse");
 
     str = "null";
