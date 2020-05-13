@@ -476,7 +476,7 @@ static void test(const char *inputStr, const char *expectedStr, const char *test
         // unpack data
         msgpack_zone mempool;
         msgpack_object obj;
-        int jsonstrlen = (int)strlen(expectedStr) + 2;
+        int jsonstrlen = (int)strlen(expectedStr) * 2 + 2;
         char *jsonparsed = (char*)malloc(jsonstrlen);
         
         msgpack_zone_init(&mempool, jsonstrlen);
