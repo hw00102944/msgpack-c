@@ -135,7 +135,7 @@ static inline int msgpack_pack_str_intact(msgpack_packer* pk, const void* b, siz
     }
 
     output[output_length] = '\0';
-    return true;
+    return output;
 }
 
 /*
@@ -177,18 +177,21 @@ static int parse_cjson_object(msgpack_packer *pk, cJSON *node)
     }
     case cJSON_Raw:
     {
-        result_status = msgpack_pack_str_intact(pk, node->valuestring, strlen(node->valuestring));
+        if (node->valuestring == NULL) {
+            result_status = msgpack_pack_str_intact(pk, "", strlen(""));
+        } else {
+            result_status = msgpack_pack_str_intact(pk, node->valuestring, strlen(node->valuestring));
+        }
         break;
     }
     case cJSON_Number:
     {
         if (isnan(node->valuedouble) || isinf(node->valuedouble)) {
             result_status = msgpack_pack_nil(pk);
-        }
-        if (node->valuedouble == node->valueint) {
-            result_status =  msgpack_pack_double(pk, node->valuedouble);
-        } else {
+        } else if (node->valuedouble == node->valueint) {
             result_status = msgpack_pack_int(pk, node->valueint);
+        } else {
+            result_status = msgpack_pack_double(pk, node->valuedouble);
         }
         break;
     }
@@ -203,6 +206,7 @@ static int parse_cjson_object(msgpack_packer *pk, cJSON *node)
                 return -1;
             }
         }
+        result_status = 0;
         break;
     }
     case cJSON_Object:
@@ -228,6 +232,7 @@ static int parse_cjson_object(msgpack_packer *pk, cJSON *node)
                 return -1;
             }
         }
+        result_status = 0;
         break;
     }
     default:
@@ -471,8 +476,8 @@ static void test(const char *inputStr, const char *expectedStr, const char *test
         // unpack data
         msgpack_zone mempool;
         msgpack_object obj;
-        int jsonstrlen = (int)strlen(inputStr) + 20;
-        char jsonparsed[jsonstrlen];
+        int jsonstrlen = (int)strlen(expectedStr) + 2;
+        char *jsonparsed = (char*)malloc(jsonstrlen);
         
         msgpack_zone_init(&mempool, jsonstrlen);
         msgpack_unpack(sbuf.data, sbuf.size, NULL, &mempool, &obj);
@@ -489,6 +494,7 @@ static void test(const char *inputStr, const char *expectedStr, const char *test
         }
 
         msgpack_zone_destroy(&mempool);
+        free(jsonparsed);
     }
 
     msgpack_sbuffer_destroy(&sbuf);
