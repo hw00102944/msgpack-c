@@ -36,6 +36,108 @@ static inline int msgpack_pack_str_intact(msgpack_packer* pk, const void* b, siz
      return msgpack_pack_ext_body(pk, b, l);
  }
 
+ static unsigned char* format_string(const unsigned char * const input)
+{
+    const unsigned char *input_pointer = NULL;
+    unsigned char *output = NULL;
+    unsigned char *output_pointer = NULL;
+    size_t output_length = 0;
+    /* numbers of additional characters*/
+    size_t escape_characters = 0;
+
+    if (input == NULL)
+    {
+        return output;
+    }
+
+    for (input_pointer = input; *input_pointer; input_pointer++)
+    {
+        switch (*input_pointer)
+        {
+            case '\"':
+            case '\\':
+            case '\b':
+            case '\f':
+            case '\n':
+            case '\r':
+            case '\t':
+                /* one character escape sequence */
+                escape_characters++;
+                break;
+            default:
+                if (*input_pointer < 32)
+                {
+                    /* UTF-16 escape sequence uXXXX */
+                    escape_characters += 5;
+                }
+                break;
+        }
+    }
+    output_length = (size_t)(input_pointer - input) + escape_characters;
+
+    output = (unsigned char*)malloc(output_length +1);
+    if (output == NULL)
+    {
+        return output;
+    }
+
+    /* no add characters*/
+    if (escape_characters == 0)
+    {
+        memcpy(output, input, output_length);
+        output[output_length] = '\0';
+        return output;
+    }
+
+    output_pointer = output;
+    /* copy string */
+    for (input_pointer = input; *input_pointer != '\0'; (void)input_pointer++, output_pointer++)
+    {
+        if ((*input_pointer > 31) && (*input_pointer != '\"') && (*input_pointer != '\\'))
+        {
+            /* normal character, copy */
+            *output_pointer = *input_pointer;
+        }
+        else
+        {
+            /* character needs to be escaped */
+            *output_pointer++ = '\\';
+            switch (*input_pointer)
+            {
+                case '\\':
+                    *output_pointer = '\\';
+                    break;
+                case '\"':
+                    *output_pointer = '\"';
+                    break;
+                case '\b':
+                    *output_pointer = 'b';
+                    break;
+                case '\f':
+                    *output_pointer = 'f';
+                    break;
+                case '\n':
+                    *output_pointer = 'n';
+                    break;
+                case '\r':
+                    *output_pointer = 'r';
+                    break;
+                case '\t':
+                    *output_pointer = 't';
+                    break;
+                default:
+                    /* escape and print as unicode codepoint */
+                    sprintf((char*)output_pointer, "u%04x", *input_pointer);
+                    output_pointer += 4;
+                    break;
+            }
+        }
+    }
+
+    output[output_length] = '\0';
+    return true;
+}
+
 /*
  * Pack cJSON object.
  * return 0 success, -1 failed
@@ -43,8 +145,8 @@ static inline int msgpack_pack_str_intact(msgpack_packer* pk, const void* b, siz
 static int parse_cjson_object(msgpack_packer *pk, cJSON *node)
 {
     int sz, i;
-    size_t len;
     cJSON *child;
+    int result_status = 0;
 
     if (node == NULL) {
         return -1;
@@ -53,32 +155,45 @@ static int parse_cjson_object(msgpack_packer *pk, cJSON *node)
     switch (node->type & 0xFF) {
     case cJSON_Invalid:
         return -1;
-
     case cJSON_False:
-        return msgpack_pack_false(pk);
-
+        result_status = msgpack_pack_false(pk);
+        break;
     case cJSON_True:
-        return msgpack_pack_true(pk);
-
+        result_status = msgpack_pack_true(pk);
+        break;
     case cJSON_NULL:
-        return msgpack_pack_nil(pk);
-
+        result_status = msgpack_pack_nil(pk);
+        break;
     case cJSON_String:
-    case cJSON_Raw:
-        len = strlen(node->valuestring);
-        return msgpack_pack_str_intact(pk, node->valuestring, len);
-
-    case cJSON_Number:
-        if (isnan(node->valuedouble) || isinf(node->valuedouble)) {
-            return msgpack_pack_nil(pk);
-        }
-        if (fabs(0.0) < fabs(node->valuedouble - node->valueint)) {
-            return msgpack_pack_double(pk, node->valuedouble);
+    {
+        unsigned char *strvalue = format_string(node->valuestring);
+        if (strvalue != NULL) {
+            result_status = msgpack_pack_str_intact(pk, strvalue, strlen(strvalue));
+            free(strvalue);
         } else {
-            return msgpack_pack_int(pk, node->valueint);
+            result_status = msgpack_pack_str_intact(pk, "", strlen(""));
         }
-
+        break;
+    }
+    case cJSON_Raw:
+    {
+        result_status = msgpack_pack_str_intact(pk, node->valuestring, strlen(node->valuestring));
+        break;
+    }
+    case cJSON_Number:
+    {
+        if (isnan(node->valuedouble) || isinf(node->valuedouble)) {
+            result_status = msgpack_pack_nil(pk);
+        }
+        if (node->valuedouble == node->valueint) {
+            result_status =  msgpack_pack_double(pk, node->valuedouble);
+        } else {
+            result_status = msgpack_pack_int(pk, node->valueint);
+        }
+        break;
+    }
     case cJSON_Array:
+    {
         sz = cJSON_GetArraySize(node);
         if (msgpack_pack_array(pk, sz) != 0) {
             return -1;
@@ -88,29 +203,38 @@ static int parse_cjson_object(msgpack_packer *pk, cJSON *node)
                 return -1;
             }
         }
-        return 0;
-
+        break;
+    }
     case cJSON_Object:
+    {
         sz = cJSON_GetArraySize(node);
         if (msgpack_pack_map(pk, sz) != 0) {
             return -1;
         }
         for (i = 0; i < sz; i++) {
             child = cJSON_GetArrayItem(node, i);
-            len = strlen(child->string);
-            if (msgpack_pack_str_intact(pk, child->string, len) != 0) {
+            unsigned char *strvalue = format_string(child->string);
+            if (strvalue == NULL) {
                 return -1;
             }
-            if (parse_cjson_object(pk, child) != 0) {
+
+            if (msgpack_pack_str_intact(pk, strvalue, strlen(strvalue)) != 0) {
+                free(strvalue);
+                return -1;
+            }
+
+            free(strvalue);
+            if (parse_cjson_object(pk, child) < 0) {
                 return -1;
             }
         }
-        return 0;
-
+        break;
+    }
     default:
         DEBUG("unknown type.\n");
         return -1;
     }
+    return (result_status == 0) ? 0 : -1;
 }
 
 /*
@@ -335,7 +459,12 @@ static void test(const char *inputStr, const char *expectedStr, const char *test
         msgpack_packer pk;
         msgpack_sbuffer_init(&sbuf);
         msgpack_packer_init(&pk, &sbuf, msgpack_sbuffer_write);
-        msgpack_pack_jsonstr(&pk, inputStr);
+        if (msgpack_pack_jsonstr(&pk, inputStr) < 0) {
+            msgpack_sbuffer_destroy(&sbuf);
+            printf("%s json is error : %s\n", testName, inputStr);
+            printf("%s failed.\n", testName);
+            return;
+        }
     }
 
     {
@@ -360,50 +489,6 @@ static void test(const char *inputStr, const char *expectedStr, const char *test
         }
 
         msgpack_zone_destroy(&mempool);
-    }
-
-    msgpack_sbuffer_destroy(&sbuf);
-}
-
-void test1(const char *strObj, const char *msgType)
-{
-    msgpack_sbuffer sbuf;
-    {
-        // pack data into packer
-        msgpack_packer pk;
-        msgpack_sbuffer_init(&sbuf);
-        msgpack_packer_init(&pk, &sbuf, msgpack_sbuffer_write);
-        msgpack_pack_jsonstr(&pk, strObj);
-    }
-
-    {
-        // unpack data
-        msgpack_unpacked result;
-        size_t off = 0;
-        msgpack_unpack_return ret;
-        int i = 0;
-        int jsonstrlen = (int)strlen(strObj) + 20;
-        char unpacked_buffer[jsonstrlen];
-        msgpack_unpacked_init(&result);
-        ret = msgpack_unpack_next(&result, strObj, jsonstrlen, &off);
-        while (ret == MSGPACK_UNPACK_SUCCESS) {
-            msgpack_object obj = result.data;
-
-            /* Use obj. */
-            msgpack_object_print_jsonstr(unpacked_buffer,  (int)strlen(strObj), obj);
-			printf("-- input--: %s\n", strObj);
-			printf("--output--: %s\n", unpacked_buffer);
-            //compare input and output
-            //EXPECT_STREQ
-            if (strcmp(strObj, unpacked_buffer) == 0) {
-                printf("%s success.\n", msgType);
-            }else {
-                printf("%s failed.\n", msgType);
-            }
-
-            ret = msgpack_unpack_next(&result, strObj,  (int)strlen(strObj), &off);
-        }
-        msgpack_unpacked_destroy(&result);
     }
 
     msgpack_sbuffer_destroy(&sbuf);
@@ -499,7 +584,7 @@ void testObjectsArray()
 void testSimpleString()
 {
     char *str = "\"My name is Tom (\\\"Bee\\\") Kobe\"";
-    test(str, "My name is Tom (\"Bee\") Kobe", "test_string");
+    test(str, str, "test_string");
 
     str = "null";
     test(str, "null", "test_null");
