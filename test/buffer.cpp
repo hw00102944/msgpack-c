@@ -71,7 +71,6 @@ TEST(buffer, vrefbuffer)
     EXPECT_TRUE( memcmp(sbuf.data(), "aaa", 3) == 0 );
 }
 
-
 TEST(buffer, zbuffer)
 {
     msgpack::zbuffer zbuf;
@@ -82,7 +81,6 @@ TEST(buffer, zbuffer)
 
     zbuf.flush();
 }
-
 
 TEST(buffer, fbuffer)
 {

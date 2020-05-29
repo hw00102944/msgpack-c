@@ -1,8 +1,8 @@
 #!/bin/sh
 
-ver=`cat include/msgpack/version_master.h | tr -d "\n" | sed -e 's/#define MSGPACK_VERSION_MAJOR[[:space:]]*\([[:alnum:]]*\)/\1./g' -e 's/#define MSGPACK_VERSION_MINOR[[:space:]]*\([[:alnum:]]*\)/\1./g' -e 's/#define MSGPACK_VERSION_REVISION[[:space:]]*\([[:alnum:]]*\)/\1/g'`
+ver=`cat include/msgpack/version_master.hpp | tr -d "\n" | sed -e 's/#define MSGPACK_VERSION_MAJOR[[:space:]]*\([[:alnum:]]*\)/\1./g' -e 's/#define MSGPACK_VERSION_MINOR[[:space:]]*\([[:alnum:]]*\)/\1./g' -e 's/#define MSGPACK_VERSION_REVISION[[:space:]]*\([[:alnum:]]*\)/\1/g'`
 
-prefix=msgpack-$ver
+prefix=msgpack-cxx-$ver
 filename=$prefix.tar
 
 ln -s . $prefix

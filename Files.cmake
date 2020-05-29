@@ -1,15 +1,4 @@
-# .h files
-LIST (APPEND msgpackc_HEADERS
-    include/msgpack/gcc_atomic.h
-    include/msgpack/object.h
-    include/msgpack/sysdep.h
-    include/msgpack/unpack_define.h
-    include/msgpack/version_master.h
-    include/msgpack/zone.h
-)
-
-# .hpp files
-LIST (APPEND msgpackc_HEADERS
+SET (msgpackc_HEADERS
     include/msgpack.hpp
     include/msgpack/adaptor/adaptor_base.hpp
     include/msgpack/adaptor/adaptor_base_decl.hpp
@@ -100,9 +89,11 @@ LIST (APPEND msgpackc_HEADERS
     include/msgpack/parse_return.hpp
     include/msgpack/sbuffer.hpp
     include/msgpack/sbuffer_decl.hpp
+    include/msgpack/sysdep.hpp
     include/msgpack/type.hpp
     include/msgpack/unpack.hpp
     include/msgpack/unpack_decl.hpp
+    include/msgpack/unpack_define.hpp
     include/msgpack/unpack_exception.hpp
     include/msgpack/v1/adaptor/adaptor_base.hpp
     include/msgpack/v1/adaptor/adaptor_base_decl.hpp
@@ -201,7 +192,6 @@ LIST (APPEND msgpackc_HEADERS
     include/msgpack/v1/pack.hpp
     include/msgpack/v1/pack_decl.hpp
     include/msgpack/v1/parse_return.hpp
-    include/msgpack/v1/preprocessor.hpp
     include/msgpack/v1/sbuffer.hpp
     include/msgpack/v1/sbuffer_decl.hpp
     include/msgpack/v1/unpack.hpp
@@ -310,6 +300,7 @@ LIST (APPEND msgpackc_HEADERS
     include/msgpack/v3/zbuffer_decl.hpp
     include/msgpack/v3/zone_decl.hpp
     include/msgpack/version.hpp
+    include/msgpack/version_master.hpp
     include/msgpack/versioning.hpp
     include/msgpack/vrefbuffer.hpp
     include/msgpack/vrefbuffer_decl.hpp

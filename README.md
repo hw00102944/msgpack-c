@@ -1,8 +1,8 @@
 `msgpack` for C++
 ===================
 
-Version 3.2.1 [![Build Status](https://travis-ci.org/msgpack/msgpack-c.svg?branch=master)](https://travis-ci.org/msgpack/msgpack-c) [![Build status](https://ci.appveyor.com/api/projects/status/8kstcgt79qj123mw/branch/master?svg=true)](https://ci.appveyor.com/project/redboltz/msgpack-c/branch/master)
-[![codecov](https://codecov.io/gh/msgpack/msgpack-c/branch/master/graph/badge.svg)](https://codecov.io/gh/msgpack/msgpack-c)
+Version 3.2.1 [![Build Status](https://travis-ci.org/msgpack/msgpack-c.svg?branch=cpp_master)](https://travis-ci.org/msgpack/msgpack-c) [![Build status](https://ci.appveyor.com/api/projects/status/8kstcgt79qj123mw/branch/cpp_master?svg=true)](https://ci.appveyor.com/project/redboltz/msgpack-c/branch/cpp_master)
+[![codecov](https://codecov.io/gh/msgpack/msgpack-c/branch/cpp_master/graph/badge.svg)](https://codecov.io/gh/msgpack/msgpack-c/branch/cpp_master)
 
 It's like JSON but smaller and faster.
 
@@ -17,8 +17,6 @@ addition to the strings themselves.
 
 Example
 -------
-
-In C++:
 
 ```c++
 #include <msgpack.hpp>
@@ -75,9 +73,6 @@ msgpack-c/include to your include path:
 
     g++ -I msgpack-c/include your_source_file.cpp
 
-If you want to use C version of msgpack, you need to build it. You can
-also install the C and C++ versions of msgpack.
-
 ### Building and Installing
 
 #### Install from git repository
@@ -87,12 +82,13 @@ also install the C and C++ versions of msgpack.
 You will need:
 
  - `gcc >= 4.1.0`
- - `cmake >= 2.8.0`
+ - `cmake >= 3.0.0`
 
 C++03:
 
     $ git clone https://github.com/msgpack/msgpack-c.git
     $ cd msgpack-c
+    $ git checkout cpp_master
     $ cmake .
     $ make
     $ sudo make install
@@ -102,12 +98,11 @@ execute the following commands:
 
     $ git clone https://github.com/msgpack/msgpack-c.git
     $ cd msgpack-c
+    $ git checkout cpp_master
     $ cmake -DMSGPACK_CXX[11|17]=ON .
     $ sudo make install
 
 `MSGPACK_CXX[11|17]` flags are not affected to installing files. Just switching test cases. All files are installed in every settings.
-
-When you use the C part of `msgpack-c`, you need to build and link the library. By default, both static/shared libraries are built. If you want to build only static library, set `BUILD_SHARED_LIBS=OFF` to cmake. If you want to build only shared library, set `BUILD_SHARED_LIBS=ON`.
 
 #### GUI on Windows
 
@@ -119,17 +114,39 @@ or using GUI git client.
 
 e.g.) tortoise git https://code.google.com/p/tortoisegit/
 
-1. Launch [cmake GUI client](http://www.cmake.org/cmake/resources/software.html).
+1. Checkout to cpp_master branch
 
-2. Set 'Where is the source code:' text box and 'Where to build
+2. Launch [cmake GUI client](http://www.cmake.org/cmake/resources/software.html).
+
+3. Set 'Where is the source code:' text box and 'Where to build
 the binaries:' text box.
 
-3. Click 'Configure' button.
+4. Click 'Configure' button.
 
-4. Choose your Visual Studio version.
+5. Choose your Visual Studio version.
 
-5. Click 'Generate' button.
+6. Click 'Generate' button.
 
-6. Open the created msgpack.sln on Visual Studio.
+7. Open the created msgpack.sln on Visual Studio.
 
-7. Build all.
+8. Build all.
+
+### Documentation
+
+You can get additional information including the tutorial on the
+[wiki](https://github.com/msgpack/msgpack-c/wiki).
+
+Contributing
+------------
+
+`msgpack-c` is developed on GitHub at [msgpack/msgpack-c](https://github.com/msgpack/msgpack-c).
+To report an issue or send a pull request, use the
+[issue tracker](https://github.com/msgpack/msgpack-c/issues).
+
+Here's the list of [great contributors](https://github.com/msgpack/msgpack-c/graphs/contributors).
+
+License
+-------
+
+`msgpack-c` is licensed under the Boost Software License, Version 1.0. See
+the [`LICENSE_1_0.txt`](./LICENSE_1_0.txt) file for details.

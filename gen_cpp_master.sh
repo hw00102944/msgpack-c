@@ -13,12 +13,17 @@ git_reset()
 }
 
 entities_to_delete=(
+    ci/build_cmake_embedded.sh
     example/c
+    example/cmake
     include/msgpack/predef
     include/msgpack/preprocessor.hpp
     include/msgpack/preprocessor
+    include/msgpack/v1/preprocessor.hpp
     include/msgpack.h
     include/msgpack/fbuffer.h
+    include/msgpack/gcc_atomic.h
+    include/msgpack/object.h
     include/msgpack/pack.h
     include/msgpack/pack_define.h
     include/msgpack/pack_template.h
@@ -31,6 +36,7 @@ entities_to_delete=(
     include/msgpack/version.h
     include/msgpack/vrefbuffer.h
     include/msgpack/zbuffer.h
+    include/msgpack/zone.h
     msgpack_vc8.sln
     msgpack_vc8.vcproj
     msgpack-config.cmake.in
@@ -51,11 +57,17 @@ done
 git commit -m 'remove C part
 
 remove the following files or folders:
+ci/build_cmake_embedded.sh
 example/c
+example/cmake
 include/msgpack/predef
+include/msgpack/preprocessor.hpp
 include/msgpack/preprocessor
+include/msgpack/v1/preprocessor.hpp
 include/msgpack.h
 include/msgpack/fbuffer.h
+include/msgpack/gcc_atomic.h
+include/msgpack/object.h
 include/msgpack/pack.h
 include/msgpack/pack_define.h
 include/msgpack/pack_template.h
@@ -68,6 +80,7 @@ include/msgpack/util.h
 include/msgpack/version.h
 include/msgpack/vrefbuffer.h
 include/msgpack/zbuffer.h
+include/msgpack/zone.h
 msgpack_vc8.sln
 msgpack_vc8.vcproj
 msgpack-config.cmake.in
@@ -80,5 +93,18 @@ test/streaming_c.cpp
 .gitmodules
 external
 QUICKSTART-C.md
+'
+git_reset $?
+
+git mv include/msgpack/sysdep.h include/msgpack/sysdep.hpp
+git mv include/msgpack/unpack_define.h include/msgpack/unpack_define.hpp
+git mv include/msgpack/version_master.h include/msgpack/version_master.hpp
+git commit -m 'rename include/msgpack/*.h to include/msgpack/*.hpp
+
+include/msgpack/sysdep.h => include/msgpack/sysdep.hpp
+include/msgpack/unpack_define.h => include/msgpack/unpack_define.hpp
+include/msgpack/version_master.h => include/msgpack/version_master.hpp
+
+Use `git log --follow include/msgpack/filename.hpp` to see full log
 '
 git_reset $?

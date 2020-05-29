@@ -7,8 +7,8 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *    http://www.boost.org/LICENSE_1_0.txt)
  */
-#ifndef MSGPACK_SYSDEP_H
-#define MSGPACK_SYSDEP_H
+#ifndef MSGPACK_SYSDEP_HPP
+#define MSGPACK_SYSDEP_HPP
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -60,7 +60,7 @@
 #endif
 #elif defined(__GNUC__) && ((__GNUC__*10 + __GNUC_MINOR__) < 41)
 
-#    define _msgpack_atomic_counter_header "msgpack/gcc_atomic.hpp"
+#   define _msgpack_atomic_counter_header "msgpack/gcc_atomic.hpp"
 
 #else
     typedef unsigned int _msgpack_atomic_counter_t;
@@ -70,14 +70,12 @@
 
 #ifdef _WIN32
 
-#   ifdef __cplusplus
     /* numeric_limits<T>::min,max */
-#       ifdef max
-#           undef max
-#       endif
-#       ifdef min
-#           undef min
-#       endif
+#   ifdef max
+#       undef max
+#   endif
+#   ifdef min
+#       undef min
 #   endif
 
 #elif defined(unix) || defined(__unix) || defined(__APPLE__) || defined(__OpenBSD__)
@@ -91,8 +89,8 @@
 
 #if !defined(MSGPACK_ENDIAN_LITTLE_BYTE) && !defined(MSGPACK_ENDIAN_BIG_BYTE)
 #include <boost/predef/other/endian.h>
-#define  MSGPACK_ENDIAN_LITTLE_BYTE  BOOST_ENDIAN_LITTLE_BYTE
-#define  MSGPACK_ENDIAN_BIG_BYTE  BOOST_ENDIAN_BIG_BYTE
+#define MSGPACK_ENDIAN_LITTLE_BYTE BOOST_ENDIAN_LITTLE_BYTE
+#define MSGPACK_ENDIAN_BIG_BYTE BOOST_ENDIAN_BIG_BYTE
 #endif // !defined(MSGPACK_ENDIAN_LITTLE_BYTE) && !defined(MSGPACK_ENDIAN_BIG_BYTE)
 
 #if MSGPACK_ENDIAN_LITTLE_BYTE
@@ -186,27 +184,8 @@
 */
 
 
-#if !defined(__cplusplus) && defined(_MSC_VER)
-#  if !defined(_KERNEL_MODE)
-#    if !defined(FALSE)
-#      define FALSE (0)
-#    endif
-#    if !defined(TRUE)
-#      define TRUE (!FALSE)
-#    endif
-#  endif
-#  if _MSC_VER >= 1800
-#    include <stdbool.h>
-#  else
-#    define bool int
-#    define true TRUE
-#    define false FALSE
-#  endif
-#  define inline __inline
-#endif
-
 #ifdef __APPLE__
 #  include <TargetConditionals.h>
 #endif
 
-#endif /* msgpack/sysdep.h */
+#endif /* msgpack/sysdep.hpp */

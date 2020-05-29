@@ -9,6 +9,11 @@ INCLUDE_DIRECTORIES (
 
 LIST (APPEND check_PROGRAMS
     array_ref.cpp
+    boost_fusion.cpp
+    boost_optional.cpp
+    boost_string_ref.cpp
+    boost_string_view.cpp
+    boost_variant.cpp
     buffer.cpp
     carray.cpp
     cases.cpp
@@ -34,16 +39,6 @@ LIST (APPEND check_PROGRAMS
     visitor.cpp
     zone.cpp
 )
-
-IF (MSGPACK_BOOST)
-    LIST (APPEND check_PROGRAMS
-        boost_fusion.cpp
-        boost_variant.cpp
-        boost_optional.cpp
-        boost_string_ref.cpp
-        boost_string_view.cpp
-    )
-ENDIF ()
 
 IF (MSGPACK_USE_X3_PARSE)
     LIST (APPEND check_PROGRAMS
@@ -79,16 +74,16 @@ FOREACH (source_file ${check_PROGRAMS})
     )
 
     TARGET_LINK_LIBRARIES (${source_file_we}
-        msgpackc-cxx
+        msgpackcxx
         ${GTEST_BOTH_LIBRARIES}
         ${ZLIB_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT}
     )
     ADD_TEST (${source_file_we} ${source_file_we})
-    IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    IF ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
         SET_PROPERTY (TARGET ${source_file_we} APPEND_STRING PROPERTY COMPILE_FLAGS " -Wall -Wextra -Wconversion")
     ENDIF ()
-    IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    IF ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
         SET_PROPERTY (TARGET ${source_file_we} APPEND_STRING PROPERTY COMPILE_FLAGS " -Wno-mismatched-tags")
     ENDIF ()
 
@@ -107,6 +102,6 @@ ADD_EXECUTABLE (
 )
 TARGET_INCLUDE_DIRECTORIES (multi_file
     PRIVATE
-        $<TARGET_PROPERTY:msgpackc-cxx,INTERFACE_INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:msgpackcxx,INTERFACE_INCLUDE_DIRECTORIES>
 )
 ADD_TEST (multi_file multi_file)
