@@ -243,6 +243,9 @@ jobs:
           $CPP11="-DMSGPACK_CXX11=OFF"
           $CHAR_SIGN="-DMSGPACK_CHAR_SIGN=signed"
         }
+        echo ${{ BOOST_ROOT_1_69_0 }}
+        echo "----------"
+        echo ${{ BOOST_ROOT_1_72_0 }}
         if (${{ matrix.pattern }} -eq 1) {
           $CPP11="-DMSGPACK_CXX11=OFF"
           $CHAR_SIGN="-DMSGPACK_CHAR_SIGN=unsigned"
