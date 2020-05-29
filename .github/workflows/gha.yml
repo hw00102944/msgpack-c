@@ -259,9 +259,14 @@ jobs:
         $CUR=(Get-Location).Path
         md build
         cd build
-        cmake -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" $CPP11 $CHAR_SIGN "-DCMAKE_CXX_FLAGS=/D_VARIADIC_MAX=10 /EHsc /D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING" ..
-        cmake --build . --config Release
-        $pathbak="$env:PATH"
-        $env:PATH="C:\vcpkg\installed\x64-windows\bin;$CUR\build\Release;$pathbak"
-        ctest -V
-        $env:PATH=$pathbak
+        try {
+          cmake -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" $CPP11 $CHAR_SIGN "-DCMAKE_CXX_FLAGS=/D_VARIADIC_MAX=10 /EHsc /D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING" ..
+          cmake --build . --config Release
+          $pathbak="$env:PATH"
+          $env:PATH="C:\vcpkg\installed\x64-windows\bin;$CUR\build\Release;$pathbak"
+          ctest -V
+          $env:PATH=$pathbak
+        }
+        catch {
+          $host.SetShouldExit($LastExitCode)
+        }
