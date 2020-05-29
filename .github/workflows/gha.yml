@@ -243,9 +243,10 @@ jobs:
           $CPP11="-DMSGPACK_CXX11=OFF"
           $CHAR_SIGN="-DMSGPACK_CHAR_SIGN=signed"
         }
-        echo ${{ BOOST_ROOT }}
-        echo "----------"
-        echo ${{ BOOST_ROOT }}
+        $files = Get-ChildItem -Path "c:\" -recurce *boost* | Where-Object -FilterScript{$_.psiscontainer -eq $true}
+        Foreach ($f in $files) {
+          echo $f
+        }
         if (${{ matrix.pattern }} -eq 1) {
           $CPP11="-DMSGPACK_CXX11=OFF"
           $CHAR_SIGN="-DMSGPACK_CHAR_SIGN=unsigned"
