@@ -243,10 +243,6 @@ jobs:
           $CPP11="-DMSGPACK_CXX11=OFF"
           $CHAR_SIGN="-DMSGPACK_CHAR_SIGN=signed"
         }
-        $files = Get-ChildItem -Path "c:\" -recurse *boost* | Where-Object -FilterScript{$_.psiscontainer -eq $true}
-        Foreach ($f in $files) {
-          echo $f
-        }
         if (${{ matrix.pattern }} -eq 1) {
           $CPP11="-DMSGPACK_CXX11=OFF"
           $CHAR_SIGN="-DMSGPACK_CHAR_SIGN=unsigned"
@@ -264,7 +260,7 @@ jobs:
         md build
         cd build
         try {
-          cmake -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" $CPP11 $CHAR_SIGN "-DCMAKE_CXX_FLAGS=/D_VARIADIC_MAX=10 /EHsc /D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING" ..
+          cmake -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DBOOST_ROOT="$env:BOOST_ROOT_1_72_0"  $CPP11 $CHAR_SIGN "-DCMAKE_CXX_FLAGS=/D_VARIADIC_MAX=10 /EHsc /D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING" ..
           cmake --build . --config Release
           if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
           $pathbak="$env:PATH"
