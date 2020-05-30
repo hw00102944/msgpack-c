@@ -150,3 +150,5 @@ License
 
 `msgpack-c` is licensed under the Boost Software License, Version 1.0. See
 the [`LICENSE_1_0.txt`](./LICENSE_1_0.txt) file for details.
+
+https://github.com/msgpack/msgpack-c/commit/fb36f588e726116d9e902b5a3943b23097207c7f
